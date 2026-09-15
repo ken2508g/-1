@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>訂單後台</title>
+<style>
+  body { font-family: -apple-system, sans-serif; margin: 0; padding: 20px; background: #F7F6F2; color: #222; }
+  h1 { font-size: 22px; font-weight: 600; margin: 0 0 4px; }
+  p.sub { font-size: 14px; color: #777; margin: 0 0 20px; }
+  #loginBox { max-width: 320px; margin: 60px auto; text-align: center; }
+  #loginBox input { width: 100%; height: 44px; border-radius: 8px; border: 1px solid #ccc; padding: 0 12px; font-size: 16px; box-sizing: border-box; margin-bottom: 12px; }
+  #loginBox button { width: 100%; height: 44px; background: #222; color: #fff; border: none; border-radius: 8px; font-size: 15px; }
+  #headerRow { display: flex; justify-content: space-between; align-items: center; }
+  #soundToggle { border: 1px solid #ccc; background: #fff; border-radius: 8px; padding: 8px 14px; font-size: 14px; }
+  #tabs { display: flex; gap: 8px; margin: 18px 0; }
+  .tab-btn { flex: 1; padding: 12px; border-radius: 10px; border: 1px solid #ccc; background: #fff; font-size: 15px; font-weight: 500; }
+  .tab-btn.active { background: #222; color: #fff; border-color: #222; }
+  #summary { display: flex; gap: 14px; margin-bottom: 20px; flex-wrap: wrap; }
+  .stat { background: #fff; border-radius: 12px; padding: 14px 20px; border: 1px solid #ddd; }
+  .stat-label { font-size: 13px; color: #777; margin: 0 0 4px; }
+  .stat-value { font-size: 24px; font-weight: 600; margin: 0; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; }
+  th, td { text-align: left; padding: 12px 14px; font-size: 15px; border-bottom: 1px solid #eee; }
+  th { color: #777; font-size: 13px; font-weight: 500; background: #fafafa; }
+  .tag { font-size: 12px; padding: 2px 8px; border-radius: 6px; background: #eee; }
+  .tag.dinein { background: #FAECE7; color: #993C1D; }
+  .tag.takeout { background: #E1F5EE; color: #0F6E56; }
+  .tag.line { background: #E1F0FF; color: #0B5FBF; }
+  .tag.counter { background: #FFF3D6; color: #8A6100; }
+  #emptyMsg { text-align: center; color: #999; padding: 40px 0; }
+  #updatedAt { font-size: 12px; color: #999; margin-top: 14px; }
+  
+  /* 完成按鈕樣式 */
+  .complete-btn { background: #0F6E56; color: #fff; border: none; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
+  .complete-btn:disabled { background: #ccc; cursor: not-allowed; }
+
+  /* 櫃檯點餐 */
+  .flavor { border-radius: 12px; padding: 14px; margin-bottom: 10px; border: 1px solid #ddd; background: #fff; cursor: pointer; }
+  .flavor.selected { border: 2px solid #D85A30; }
+  .flavor.soldout { opacity: 0.5; cursor: default; }
+  .flavor-row { display: flex; justify-content: space-between; align-items: center; }
+  .flavor-name { font-size: 15px; font-weight: 600; }
+  .flavor-price { font-size: 13px; color: #777; margin-top: 3px; }
+  .badge { font-size: 12px; padding: 3px 10px; border-radius: 6px; background: #FAECE7; color: #993C1D; }
+  .badge.out { background: #eee; color: #999; }
+  label.field-label { font-size: 13px; color: #777; display: block; margin: 18px 0 6px; }
+  .qty-row { display: flex; align-items: center; gap: 12px; }
+  .qty-btn { width: 44px; height: 44px; border-radius: 8px; border: 1px solid #ccc; background: #fff; font-size: 20px; }
+  select, input { width: 100%; height: 44px; border-radius: 8px; border: 1px solid #ccc; padding: 0 10px; font-size: 16px; box-sizing: border-box; }
+  .dine-options { display: flex; gap: 10px; }
+  .dine-option { flex: 1; text-align: center; padding: 12px; border-radius: 8px; border: 1px solid #ccc; background: #fff; cursor: pointer; font-size: 15px; }
+  .dine-option.selected { border: 2px solid #D85A30; font-weight: 600; }
+  #counterTotalRow { display: flex; justify-content: space-between; align-items: baseline; margin-top: 18px; }
+  #counterTotalRow span:first-child { font-size: 13px; color: #777; }
+  #counterTotalRow span:last-child { font-size: 22px; font-weight: 600; }
+  #counterSubmitBtn { width: 100%; height: 48px; margin-top: 14px; background: #222; color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; }
+  #counterErrorMsg { color: #c0392b; font-size: 13px; margin-top: 8px; display: none; }
+  #counterSuccessMsg { color: #0F6E56; font-size: 13px; margin-top: 8px; display: none; }
+</style>
+</head>
+<body>
+
+<div id="loginBox">
+  <h1>訂單後台</h1>
+  <p class="sub">請輸入密碼</p>
+  <input type="password" id="pwInput" placeholder="密碼">
+  <button id="loginBtn">登入</button>
+  <p id="loginError" style="color:#c0392b;font-size:13px;display:none">密碼錯誤</p>
+</div>
+
+<div id="dashboard" style="display:none">
+  <div id="headerRow">
+    <div>
+      <h1>今日訂單</h1>
+      <p class="sub" id="dateLabel"></p>
+    </div>
+    <button id="soundToggle">🔔 音效開</button>
+  </div>
+
+  <div id="tabs">
+    <button class="tab-btn active" id="tabOrders">訂單列表</button>
+    <button class="tab-btn" id="tabCounter">櫃檯點餐</button>
+  </div>
+
+  <!-- 訂單列表 -->
+  <div id="ordersView">
+    <div id="summary"></div>
+    <table id="orderTable">
+      <thead>
+        <tr><th>取餐時間</th><th>來源</th><th>姓名</th><th>口味</th><th>數量</th><th>內用/外帶</th><th>金額</th><th>操作</th></tr>
+      </thead>
+      <tbody id="orderBody"></tbody>
+    </table>
+    <p id="emptyMsg" style="display:none">目前沒有待處理的訂單</p>
+    <p id="updatedAt"></p>
+  </div>
+
+  <!-- 櫃檯點餐 -->
+  <div id="counterView" style="display:none">
+    <div id="counterFlavors"></div>
+
+    <label class="field-label">數量</label>
+    <div class="qty-row">
+      <button class="qty-btn" id="counterQtyMinus">−</button>
+      <span id="counterQtyOut">1</span>
+      <button class="qty-btn" id="counterQtyPlus">+</button>
+    </div>
+
+    <label class="field-label">內用或外帶</label>
+    <div class="dine-options">
+      <div class="dine-option selected" data-value="內用">內用</div>
+      <div class="dine-option" data-value="外帶">外帶</div>
+    </div>
+
+    <label class="field-label">取餐時間</label>
+    <select id="counterPickupTime"></select>
+
+    <label class="field-label">姓名或桌號(選填)</label>
+    <input type="text" id="counterCustomerName" placeholder="例如:王先生 / 3號桌">
+
+    <div id="counterTotalRow">
+      <span>總金額</span>
+      <span id="counterTotalPrice">$0</span>
+    </div>
+
+    <button id="counterSubmitBtn">送出點餐</button>
+    <p id="counterErrorMsg"></p>
+    <p id="counterSuccessMsg"></p>
+  </div>
+</div>
+
+<script>
+// ===== 請修改以下設定 =====
+var API_URL = "https://script.google.com/macros/s/AKfycbz3z1YU7bmYsuDxayzHjHEdovKZmNUc0K_wgOEjb_UJxqZJYc61oLIsKg3al-1x1b-p/exec";
+var REFRESH_SECONDS = 15;
+// ============================
+
+var adminKey = "";
+var audioCtx = null;
+var soundEnabled = true;
+var knownOrderIds = null;
+var latestMenu = [];
+
+// ---- 音效 ----
+function unlockAudio() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+  } catch (e) {}
+}
+function playTone(freq, startTime, duration) {
+  var osc = audioCtx.createOscillator();
+  var gain = audioCtx.createGain();
+  osc.frequency.value = freq;
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  gain.gain.setValueAtTime(0.0001, startTime);
+  gain.gain.exponentialRampToValueAtTime(0.3, startTime + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+  osc.start(startTime);
+  osc.stop(startTime + duration);
+}
+function playDing() {
+  if (!soundEnabled || !audioCtx) return;
+  var t = audioCtx.currentTime;
+  playTone(880, t, 0.22);
+  playTone(660, t + 0.24, 0.28);
+}
+document.getElementById("soundToggle").addEventListener("click", function() {
+  soundEnabled = !soundEnabled;
+  this.textContent = soundEnabled ? "🔔 音效開" : "🔕 音效關";
+  if (soundEnabled) unlockAudio();
+});
+
+// ---- 分頁切換 ----
+document.getElementById("tabOrders").addEventListener("click", function() {
+  document.getElementById("tabOrders").classList.add("active");
+  document.getElementById("tabCounter").classList.remove("active");
+  document.getElementById("ordersView").style.display = "block";
+  document.getElementById("counterView").style.display = "none";
+});
+document.getElementById("tabCounter").addEventListener("click", function() {
+  document.getElementById("tabCounter").classList.add("active");
+  document.getElementById("tabOrders").classList.remove("active");
+  document.getElementById("counterView").style.display = "block";
+  document.getElementById("ordersView").style.display = "none";
+});
+
+// ---- 登入 ----
+document.getElementById("loginBtn").addEventListener("click", function() {
+  adminKey = document.getElementById("pwInput").value;
+  unlockAudio();
+  fetchData(true);
+});
+
+function fetchData(isLogin) {
+  fetch(API_URL + "?admin=1&key=" + encodeURIComponent(adminKey))
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.error) {
+        if (isLogin) document.getElementById("loginError").style.display = "block";
+        return;
+      }
+      document.getElementById("loginBox").style.display = "none";
+      document.getElementById("dashboard").style.display = "block";
+      latestMenu = data.menu || [];
+      checkNewOrders(data.orders || []);
+      renderOrders(latestMenu, data.orders || []);
+      renderCounterFlavors();
+    })
+    .catch(function() {
+      if (isLogin) {
+        document.getElementById("loginError").textContent = "連線失敗,請確認網路";
+        document.getElementById("loginError").style.display = "block";
+      }
+    });
+}
+
+function checkNewOrders(orders) {
+  if (knownOrderIds === null) {
+    knownOrderIds = {};
+    orders.forEach(function(o) { knownOrderIds[o.order_id] = true; });
+    return;
+  }
+  var hasNew = false;
+  orders.forEach(function(o) {
+    if (!knownOrderIds[o.order_id]) { knownOrderIds[o.order_id] = true; hasNew = true; }
+  });
+  if (hasNew) playDing();
+}
+
+// ---- 訂單列表 ----
+function renderOrders(menu, orders) {
+  var today = new Date();
+  document.getElementById("dateLabel").textContent = today.toLocaleDateString("zh-TW", { month: "long", day: "numeric", weekday: "long" });
+
+  var summaryEl = document.getElementById("summary");
+  summaryEl.innerHTML = "";
+  var totalQty = orders.reduce(function(sum, o) { return sum + Number(o.qty); }, 0);
+  var totalRevenue = orders.reduce(function(sum, o) { return sum + Number(o.total_price); }, 0);
+
+  var qtyStat = document.createElement("div");
+  qtyStat.className = "stat";
+  qtyStat.innerHTML = '<p class="stat-label">待處理份數</p><p class="stat-value">' + totalQty + '</p>';
+  summaryEl.appendChild(qtyStat);
+
+  var revenueStat = document.createElement("div");
+  revenueStat.className = "stat";
+  revenueStat.innerHTML = '<p class="stat-label">待收/已收營收</p><p class="stat-value">$' + totalRevenue + '</p>';
+  summaryEl.appendChild(revenueStat);
+
+  menu.forEach(function(f) {
+    var stat = document.createElement("div");
+    stat.className = "stat";
+    stat.innerHTML = '<p class="stat-label">' + f.name + '</p><p class="stat-value">' + f.sold + ' / ' + f.total + '</p>';
+    summaryEl.appendChild(stat);
+  });
+
+  var body = document.getElementById("orderBody");
+  body.innerHTML = "";
+  if (orders.length === 0) {
+    document.getElementById("orderTable").style.display = "none";
+    document.getElementById("emptyMsg").style.display = "block";
+  } else {
+    document.getElementById("orderTable").style.display = "table";
+    document.getElementById("emptyMsg").style.display = "none";
+    orders.forEach(function(o) {
+      var tagClass = o.dine_option === "內用" ? "dinein" : "takeout";
+      var sourceClass = o.source === "現場" ? "counter" : "line";
+      var sourceLabel = o.source === "現場" ? "現場" : "LINE";
+      var tr = document.createElement("tr");
+      tr.innerHTML = "<td>" + o.pickup_time + "</td>" +
+        "<td><span class='tag " + sourceClass + "'>" + sourceLabel + "</span></td>" +
+        "<td>" + (o.customer_name || "-") + "</td><td>" + o.flavor_name + "</td><td>" + o.qty +
+        "</td><td><span class='tag " + tagClass + "'>" + o.dine_option + "</span></td><td>$" + o.total_price + "</td>" +
+        "<td><button class='complete-btn' data-id='" + o.order_id + "'>完成</button></td>";
+      body.appendChild(tr);
+    });
+    
+    // 綁定「完成」按鈕事件
+    document.querySelectorAll(".complete-btn").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        var orderId = this.getAttribute("data-id");
+        this.disabled = true;
+        this.textContent = "處理中";
+        
+        fetch(API_URL, {
+          method: "POST",
+          body: JSON.stringify({ action: "complete", order_id: orderId })
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(result) {
+          if (result.success) {
+            fetchData(false); // 成功後重新載入列表
+          } else {
+            alert("操作失敗: " + result.message);
+            btn.disabled = false;
+            btn.textContent = "完成";
+          }
+        })
+        .catch(function() {
+          alert("網路連線失敗");
+          btn.disabled = false;
+          btn.textContent = "完成";
+        });
+      });
+    });
+  }
+  document.getElementById("updatedAt").textContent = "更新時間 " + new Date().toLocaleTimeString("zh-TW");
+}
+
+// ---- 櫃檯點餐 ----
+var counterSelectedFlavor = null;
+var counterQty = 1;
+var counterDineOption = "內用";
+
+function renderCounterFlavors() {
+  var wrap = document.getElementById("counterFlavors");
+  wrap.innerHTML = "";
+  latestMenu.forEach(function(f) {
+    var soldOut = f.remaining <= 0;
+    var div = document.createElement("div");
+    div.className = "flavor" + (counterSelectedFlavor === f.flavor_id ? " selected" : "") + (soldOut ? " soldout" : "");
+    // 同時顯示內用與外帶價格
+    div.innerHTML = '<div class="flavor-row"><span class="flavor-name">' + f.name + '</span>' +
+      '<span class="badge' + (soldOut ? " out" : "") + '">' + (soldOut ? "已售完" : "剩 " + f.remaining + " 份") + '</span></div>' +
+      '<div class="flavor-price">內用 $' + f.price_dinein + ' / 外帶 $' + f.price_takeout + '</div>';
+    if (!soldOut) {
+      div.addEventListener("click", function() {
+        counterSelectedFlavor = f.flavor_id;
+        renderCounterFlavors();
+        updateCounterTotal();
+      });
+    }
+    wrap.appendChild(div);
+  });
+}
+
+function renderCounterPickupOptions() {
+  var sel = document.getElementById("counterPickupTime");
+  sel.innerHTML = "";
+  var nowOpt = document.createElement("option");
+  nowOpt.value = "立即";
+  nowOpt.textContent = "立即製作";
+  sel.appendChild(nowOpt);
+  var times = ["11:30","11:45","12:00","12:15","12:30","12:45","13:00"];
+  times.forEach(function(t) {
+    var opt = document.createElement("option");
+    opt.value = t;
+    opt.textContent = t;
+    sel.appendChild(opt);
+  });
+}
+
+function updateCounterTotal() {
+  var f = latestMenu.find(function(x) { return x.flavor_id === counterSelectedFlavor; });
+  // 根據選擇的內用/外帶，動態抓取對應價格
+  var price = f ? (counterDineOption === "內用" ? f.price_dinein : f.price_takeout) : 0;
+  document.getElementById("counterTotalPrice").textContent = "$" + (price * counterQty);
+}
+
+document.getElementById("counterQtyMinus").addEventListener("click", function() {
+  if (counterQty > 1) { counterQty -= 1; document.getElementById("counterQtyOut").textContent = counterQty; updateCounterTotal(); }
+});
+document.getElementById("counterQtyPlus").addEventListener("click", function() {
+  if (counterQty < 10) { counterQty += 1; document.getElementById("counterQtyOut").textContent = counterQty; updateCounterTotal(); }
+});
+
+// 當切換內用或外帶時，觸發 updateCounterTotal 即時重算金額
+document.querySelectorAll(".dine-option").forEach(function(el) {
+  el.addEventListener("click", function() {
+    document.querySelectorAll(".dine-option").forEach(function(x) { x.classList.remove("selected"); });
+    el.classList.add("selected");
+    counterDineOption = el.getAttribute("data-value");
+    updateCounterTotal(); 
+  });
+});
+
+document.getElementById("counterSubmitBtn").addEventListener("click", function() {
+  var errEl = document.getElementById("counterErrorMsg");
+  var okEl = document.getElementById("counterSuccessMsg");
+  errEl.style.display = "none";
+  okEl.style.display = "none";
+
+  if (!counterSelectedFlavor) { errEl.textContent = "請先選擇口味"; errEl.style.display = "block"; return; }
+  var f = latestMenu.find(function(x) { return x.flavor_id === counterSelectedFlavor; });
+  if (!f || f.remaining <= 0) { errEl.textContent = "這個口味已經售完了"; errEl.style.display = "block"; return; }
+  if (counterQty > f.remaining) { errEl.textContent = "剩餘份數不足,只剩 " + f.remaining + " 份"; errEl.style.display = "block"; return; }
+
+  var name = document.getElementById("counterCustomerName").value.trim() || "現場客人";
+  var pickupTime = document.getElementById("counterPickupTime").value;
+  document.getElementById("counterSubmitBtn").disabled = true;
+
+  fetch(API_URL, {
+    method: "POST",
+    body: JSON.stringify({
+      flavor_id: counterSelectedFlavor,
+      qty: counterQty,
+      dine_option: counterDineOption,
+      pickup_time: pickupTime,
+      customer_name: name,
+      source: "現場"
+    })
+  })
+    .then(function(res) { return res.json(); })
+    .then(function(result) {
+      document.getElementById("counterSubmitBtn").disabled = false;
+      if (!result.success) {
+        errEl.textContent = result.message || "送出失敗,請再試一次";
+        errEl.style.display = "block";
+        return;
+      }
+      okEl.textContent = "已送出:" + f.name + " × " + counterQty + "份,共 $" + result.total_price;
+      okEl.style.display = "block";
+      counterSelectedFlavor = null;
+      counterQty = 1;
+      document.getElementById("counterQtyOut").textContent = 1;
+      document.getElementById("counterCustomerName").value = "";
+      document.getElementById("counterTotalPrice").textContent = "$0"; // 送出後金額歸零
+      fetchData(false);
+    })
+    .catch(function() {
+      document.getElementById("counterSubmitBtn").disabled = false;
+      errEl.textContent = "網路連線失敗,請再試一次";
+      errEl.style.display = "block";
+    });
+});
+
+renderCounterPickupOptions();
+
+setInterval(function() {
+  if (adminKey) fetchData(false);
+}, REFRESH_SECONDS * 1000);
+</script>
+</body>
+</html>

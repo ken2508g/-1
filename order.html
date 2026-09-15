@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>今日點餐</title>
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  body { font-family: -apple-system, sans-serif; max-width: 420px; margin: 0 auto; padding: 16px; background: #F7F6F2; color: #222; }
+  h1 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
+  p.sub { font-size: 13px; color: #777; margin: 0 0 20px; }
+  .flavor { border-radius: 12px; padding: 14px; margin-bottom: 10px; border: 1px solid #ddd; background: #fff; cursor: pointer; }
+  .flavor.selected { border: 2px solid #D85A30; }
+  .flavor.soldout { opacity: 0.5; cursor: default; }
+  .flavor-row { display: flex; justify-content: space-between; align-items: center; }
+  .flavor-name { font-size: 15px; font-weight: 600; }
+  .flavor-price { font-size: 13px; color: #777; margin-top: 3px; }
+  .badge { font-size: 12px; padding: 3px 10px; border-radius: 6px; background: #FAECE7; color: #993C1D; }
+  .badge.out { background: #eee; color: #999; }
+  label.field-label { font-size: 13px; color: #777; display: block; margin: 18px 0 6px; }
+  .qty-row { display: flex; align-items: center; gap: 12px; }
+  .qty-btn { width: 36px; height: 36px; border-radius: 8px; border: 1px solid #ccc; background: #fff; font-size: 18px; }
+  select, input { width: 100%; height: 40px; border-radius: 8px; border: 1px solid #ccc; padding: 0 10px; font-size: 15px; box-sizing: border-box; }
+  .dine-options { display: flex; gap: 10px; }
+  .dine-option { flex: 1; text-align: center; padding: 10px; border-radius: 8px; border: 1px solid #ccc; background: #fff; cursor: pointer; font-size: 14px; }
+  .dine-option.selected { border: 2px solid #D85A30; font-weight: 600; }
+  #totalRow { display: flex; justify-content: space-between; align-items: baseline; margin-top: 18px; }
+  #totalRow span:first-child { font-size: 13px; color: #777; }
+  #totalRow span:last-child { font-size: 22px; font-weight: 600; }
+  button#submitBtn { width: 100%; height: 44px; margin-top: 14px; background: #222; color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; }
+  #errorMsg { color: #c0392b; font-size: 13px; margin-top: 8px; display: none; }
+  #confirmCard { display: none; margin-top: 20px; background: #fff; border: 1px solid #ddd; border-radius: 12px; padding: 16px; }
+</style>
+</head>
+<body>
+  <h1>今日餐點</h1>
+  <p class="sub">每份限量供應, 取餐前請準時取餐</p>
+
+  <div id="flavors"></div>
+
+  <label class="field-label">數量</label>
+  <div class="qty-row">
+    <button class="qty-btn" id="qtyMinus">−</button>
+    <span id="qtyOut">1</span>
+    <button class="qty-btn" id="qtyPlus">+</button>
+  </div>
+
+  <label class="field-label">內用或外帶</label>
+  <div class="dine-options">
+    <div class="dine-option selected" data-value="內用">內用</div>
+    <div class="dine-option" data-value="外帶">外帶</div>
+  </div>
+
+  <label class="field-label">取餐時間</label>
+  <select id="pickupTime"></select>
+
+  <label class="field-label">姓名(方便取餐時核對)</label>
+  <input type="text" id="customerName" placeholder="請輸入姓名">
+
+  <div id="totalRow">
+    <span>總金額</span>
+    <span id="totalPrice">$0</span>
+  </div>
+
+  <button id="submitBtn">送出預約</button>
+  <p id="errorMsg"></p>
+
+  <div id="confirmCard">
+    <p class="sub" style="margin:0 0 6px">預約成功</p>
+    <p id="confirmDetail" style="font-size:15px;font-weight:600;margin:0"></p>
+  </div>
+
+<script>
+// ===== 請修改以下兩個設定 =====
+var LIFF_ID = "請填入你的LIFF ID";
+var API_URL = "https://script.google.com/macros/s/AKfycbz3z1YU7bmYsuDxayzHjHEdovKZmNUc0K_wgOEjb_UJxqZJYc61oLIsKg3al-1x1b-p/exec";
+// ================================
+
+var menu = [];
+var selectedFlavor = null;
+var qty = 1;
+var dineOption = "內用";
+var userProfile = { displayName: "" };
+
+function renderFlavors() {
+  var wrap = document.getElementById("flavors");
+  wrap.innerHTML = "";
+  menu.forEach(function(f) {
+    var soldOut = f.remaining <= 0;
+    var div = document.createElement("div");
+    div.className = "flavor" + (selectedFlavor === f.flavor_id ? " selected" : "") + (soldOut ? " soldout" : "");
+    // 給客人看一樣會顯示兩種價格
+    div.innerHTML = '<div class="flavor-row"><span class="flavor-name">' + f.name + '</span>' +
+      '<span class="badge' + (soldOut ? " out" : "") + '">' + (soldOut ? "已售完" : "剩 " + f.remaining + " 份") + '</span></div>' +
+      '<div class="flavor-price">內用 $' + f.price_dinein + ' / 外帶 $' + f.price_takeout + '</div>';
+    if (!soldOut) {
+      div.addEventListener("click", function() {
+        selectedFlavor = f.flavor_id;
+        renderFlavors();
+        updateTotal();
+      });
+    }
+    wrap.appendChild(div);
+  });
+}
+
+function renderPickupOptions() {
+  var sel = document.getElementById("pickupTime");
+  sel.innerHTML = "";
+  var times = ["11:30","11:45","12:00","12:15","12:30","12:45","13:00"];
+  times.forEach(function(t) {
+    var opt = document.createElement("option");
+    opt.value = t;
+    opt.textContent = t;
+    sel.appendChild(opt);
+  });
+}
+
+function updateTotal() {
+  var f = menu.find(function(x) { return x.flavor_id === selectedFlavor; });
+  // 動態抓取內用或外帶的價格
+  var price = f ? (dineOption === "內用" ? f.price_dinein : f.price_takeout) : 0;
+  document.getElementById("totalPrice").textContent = "$" + (price * qty);
+}
+
+function loadMenu() {
+  fetch(API_URL)
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      menu = data.menu || [];
+      renderFlavors();
+      updateTotal();
+    })
+    .catch(function() {
+      document.getElementById("errorMsg").textContent = "菜單載入失敗,請重新整理";
+      document.getElementById("errorMsg").style.display = "block";
+    });
+}
+
+document.getElementById("qtyMinus").addEventListener("click", function() {
+  if (qty > 1) { qty -= 1; document.getElementById("qtyOut").textContent = qty; updateTotal(); }
+});
+document.getElementById("qtyPlus").addEventListener("click", function() {
+  if (qty < 5) { qty += 1; document.getElementById("qtyOut").textContent = qty; updateTotal(); }
+});
+
+document.querySelectorAll(".dine-option").forEach(function(el) {
+  el.addEventListener("click", function() {
+    document.querySelectorAll(".dine-option").forEach(function(x) { x.classList.remove("selected"); });
+    el.classList.add("selected");
+    dineOption = el.getAttribute("data-value");
+    // 客人點擊切換內外帶時，馬上重算總金額
+    updateTotal();
+  });
+});
+
+document.getElementById("submitBtn").addEventListener("click", function() {
+  var errEl = document.getElementById("errorMsg");
+  errEl.style.display = "none";
+  var name = document.getElementById("customerName").value.trim();
+
+  if (!selectedFlavor) { errEl.textContent = "請先選擇口味"; errEl.style.display = "block"; return; }
+  if (!name) { errEl.textContent = "請輸入姓名"; errEl.style.display = "block"; return; }
+
+  var f = menu.find(function(x) { return x.flavor_id === selectedFlavor; });
+  if (!f || f.remaining <= 0) { errEl.textContent = "這個口味已經售完了"; errEl.style.display = "block"; return; }
+  if (qty > f.remaining) { errEl.textContent = "剩餘份數不足,只剩 " + f.remaining + " 份"; errEl.style.display = "block"; return; }
+
+  document.getElementById("submitBtn").disabled = true;
+
+  fetch(API_URL, {
+    method: "POST",
+    body: JSON.stringify({
+      flavor_id: selectedFlavor,
+      qty: qty,
+      dine_option: dineOption,
+      pickup_time: document.getElementById("pickupTime").value,
+      customer_name: name,
+      line_user_id: userProfile.userId || ""
+    })
+  })
+    .then(function(res) { return res.json(); })
+    .then(function(result) {
+      document.getElementById("submitBtn").disabled = false;
+      if (!result.success) {
+        errEl.textContent = result.message || "送出失敗,請再試一次";
+        errEl.style.display = "block";
+        loadMenu();
+        return;
+      }
+      var confirmCard = document.getElementById("confirmCard");
+      document.getElementById("confirmDetail").textContent = f.name + " × " + qty + "份(" + dineOption + "),取餐時間 " + document.getElementById("pickupTime").value + "，共 $" + result.total_price;
+      confirmCard.style.display = "block";
+      qty = 1;
+      document.getElementById("qtyOut").textContent = 1;
+      loadMenu();
+    })
+    .catch(function() {
+      document.getElementById("submitBtn").disabled = false;
+      errEl.textContent = "網路連線失敗,請再試一次";
+      errEl.style.display = "block";
+    });
+});
+
+renderPickupOptions();
+
+liff.init({ liffId: LIFF_ID }).then(function() {
+  if (liff.isLoggedIn()) {
+    liff.getProfile().then(function(profile) {
+      userProfile = profile;
+      document.getElementById("customerName").value = profile.displayName;
+    });
+  }
+  loadMenu();
+}).catch(function() {
+  loadMenu();
+});
+</script>
+</body>
+</html>
