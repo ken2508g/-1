@@ -9,41 +9,38 @@
   body { font-family: -apple-system, sans-serif; max-width: 420px; margin: 0 auto; padding: 16px; background: #F7F6F2; color: #222; }
   h1 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
   p.sub { font-size: 13px; color: #777; margin: 0 0 20px; }
-  .flavor { border-radius: 12px; padding: 14px; margin-bottom: 10px; border: 1px solid #ddd; background: #fff; cursor: pointer; }
+  .flavor { border-radius: 12px; padding: 14px; margin-bottom: 12px; border: 1px solid #ddd; background: #fff; }
   .flavor.selected { border: 2px solid #D85A30; }
-  .flavor.soldout { opacity: 0.5; cursor: default; }
+  .flavor.soldout { opacity: 0.5; }
   .flavor-row { display: flex; justify-content: space-between; align-items: center; }
   .flavor-name { font-size: 15px; font-weight: 600; }
-  .flavor-price { font-size: 13px; color: #777; margin-top: 3px; }
-  .badge { font-size: 12px; padding: 3px 10px; border-radius: 6px; background: #FAECE7; color: #993C1D; }
+  .flavor-price { font-size: 13px; color: #777; margin-top: 4px; }
+  .badge { font-size: 12px; padding: 3px 10px; border-radius: 6px; }
   .badge.out { background: #eee; color: #999; }
+  
+  /* 購物車按鈕樣式 */
+  .cart-controls { display: flex; align-items: center; justify-content: flex-end; margin-top: 10px; gap: 14px; }
+  .cart-btn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid #ccc; background: #fff; font-size: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #222; }
+  .cart-qty { font-size: 16px; font-weight: 600; min-width: 24px; text-align: center; }
+
   label.field-label { font-size: 13px; color: #777; display: block; margin: 18px 0 6px; }
-  .qty-row { display: flex; align-items: center; gap: 12px; }
-  .qty-btn { width: 36px; height: 36px; border-radius: 8px; border: 1px solid #ccc; background: #fff; font-size: 18px; }
-  select, input { width: 100%; height: 40px; border-radius: 8px; border: 1px solid #ccc; padding: 0 10px; font-size: 15px; box-sizing: border-box; }
+  select, input { width: 100%; height: 42px; border-radius: 8px; border: 1px solid #ccc; padding: 0 10px; font-size: 15px; box-sizing: border-box; }
   .dine-options { display: flex; gap: 10px; }
   .dine-option { flex: 1; text-align: center; padding: 10px; border-radius: 8px; border: 1px solid #ccc; background: #fff; cursor: pointer; font-size: 14px; }
   .dine-option.selected { border: 2px solid #D85A30; font-weight: 600; }
   #totalRow { display: flex; justify-content: space-between; align-items: baseline; margin-top: 18px; }
   #totalRow span:first-child { font-size: 13px; color: #777; }
-  #totalRow span:last-child { font-size: 22px; font-weight: 600; }
-  button#submitBtn { width: 100%; height: 44px; margin-top: 14px; background: #222; color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; }
+  #totalRow span:last-child { font-size: 24px; font-weight: 600; color: #D85A30;}
+  button#submitBtn { width: 100%; height: 46px; margin-top: 14px; background: #222; color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer;}
   #errorMsg { color: #c0392b; font-size: 13px; margin-top: 8px; display: none; }
   #confirmCard { display: none; margin-top: 20px; background: #fff; border: 1px solid #ddd; border-radius: 12px; padding: 16px; }
 </style>
 </head>
 <body>
   <h1>今日餐點</h1>
-  <p class="sub">每份限量供應, 取餐前請準時取餐</p>
+  <p class="sub">每份限量供應，取餐前請準時取餐</p>
 
   <div id="flavors"></div>
-
-  <label class="field-label">數量</label>
-  <div class="qty-row">
-    <button class="qty-btn" id="qtyMinus">−</button>
-    <span id="qtyOut">1</span>
-    <button class="qty-btn" id="qtyPlus">+</button>
-  </div>
 
   <label class="field-label">內用或外帶</label>
   <div class="dine-options">
@@ -73,12 +70,11 @@
 <script>
 // ===== 請修改以下兩個設定 =====
 var LIFF_ID = "請填入你的LIFF ID";
-var API_URL = "https://script.google.com/macros/s/AKfycbz3z1YU7bmYsuDxayzHjHEdovKZmNUc0K_wgOEjb_UJxqZJYc61oLIsKg3al-1x1b-p/exec";
+var API_URL = "https://script.google.com/macros/s/AKfycbxa__Srd8w9sDq-hnm5uIpIjMMFIzh8uGGuBJs1l2BFPhnScKJz3vVsWuHvcuzolVmh/exec";
 // ================================
 
 var menu = [];
-var selectedFlavor = null;
-var qty = 1;
+var cart = {}; // 購物車物件: { flavor_id: qty }
 var dineOption = "內用";
 var userProfile = { displayName: "" };
 
@@ -87,20 +83,57 @@ function renderFlavors() {
   wrap.innerHTML = "";
   menu.forEach(function(f) {
     var soldOut = f.remaining <= 0;
+    var currentQty = cart[f.flavor_id] || 0;
+    
     var div = document.createElement("div");
-    div.className = "flavor" + (selectedFlavor === f.flavor_id ? " selected" : "") + (soldOut ? " soldout" : "");
-    // 給客人看一樣會顯示兩種價格
-    div.innerHTML = '<div class="flavor-row"><span class="flavor-name">' + f.name + '</span>' +
-      '<span class="badge' + (soldOut ? " out" : "") + '">' + (soldOut ? "已售完" : "剩 " + f.remaining + " 份") + '</span></div>' +
-      '<div class="flavor-price">內用 $' + f.price_dinein + ' / 外帶 $' + f.price_takeout + '</div>';
+    div.className = "flavor" + (currentQty > 0 ? " selected" : "") + (soldOut ? " soldout" : "");
+    
+    // 移除「剩幾份」的顯示，只在賣完時顯示已售完
+    var badgeHtml = soldOut ? '<span class="badge out">已售完</span>' : '';
+    
+    var html = '<div class="flavor-row"><span class="flavor-name">' + f.name + '</span>' + badgeHtml + '</div>';
+    html += '<div class="flavor-price">內用 $' + f.price_dinein + ' / 外帶 $' + f.price_takeout + '</div>';
+    
+    // 如果還沒賣完，顯示加減按鈕
     if (!soldOut) {
-      div.addEventListener("click", function() {
-        selectedFlavor = f.flavor_id;
+      html += '<div class="cart-controls">';
+      html += '<button class="cart-btn minus" data-id="' + f.flavor_id + '">−</button>';
+      html += '<span class="cart-qty">' + currentQty + '</span>';
+      html += '<button class="cart-btn plus" data-id="' + f.flavor_id + '">+</button>';
+      html += '</div>';
+    }
+    
+    div.innerHTML = html;
+    wrap.appendChild(div);
+  });
+
+  // 綁定購物車按鈕事件
+  document.querySelectorAll('.cart-btn.minus').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var id = this.getAttribute('data-id');
+      if (cart[id] > 0) {
+        cart[id]--;
+        if (cart[id] === 0) delete cart[id];
         renderFlavors();
         updateTotal();
-      });
-    }
-    wrap.appendChild(div);
+      }
+    });
+  });
+
+  document.querySelectorAll('.cart-btn.plus').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var id = this.getAttribute('data-id');
+      var f = menu.find(function(x) { return x.flavor_id === id; });
+      var current = cart[id] || 0;
+      
+      if (current < f.remaining && current < 10) {
+        cart[id] = current + 1;
+        renderFlavors();
+        updateTotal();
+      } else if (current >= f.remaining) {
+        alert("剩餘數量不足");
+      }
+    });
   });
 }
 
@@ -117,10 +150,15 @@ function renderPickupOptions() {
 }
 
 function updateTotal() {
-  var f = menu.find(function(x) { return x.flavor_id === selectedFlavor; });
-  // 動態抓取內用或外帶的價格
-  var price = f ? (dineOption === "內用" ? f.price_dinein : f.price_takeout) : 0;
-  document.getElementById("totalPrice").textContent = "$" + (price * qty);
+  var total = 0;
+  for (var id in cart) {
+    var f = menu.find(function(x) { return x.flavor_id === id; });
+    if (f) {
+      var price = (dineOption === "內用") ? f.price_dinein : f.price_takeout;
+      total += price * cart[id];
+    }
+  }
+  document.getElementById("totalPrice").textContent = "$" + total;
 }
 
 function loadMenu() {
@@ -137,19 +175,11 @@ function loadMenu() {
     });
 }
 
-document.getElementById("qtyMinus").addEventListener("click", function() {
-  if (qty > 1) { qty -= 1; document.getElementById("qtyOut").textContent = qty; updateTotal(); }
-});
-document.getElementById("qtyPlus").addEventListener("click", function() {
-  if (qty < 5) { qty += 1; document.getElementById("qtyOut").textContent = qty; updateTotal(); }
-});
-
 document.querySelectorAll(".dine-option").forEach(function(el) {
   el.addEventListener("click", function() {
     document.querySelectorAll(".dine-option").forEach(function(x) { x.classList.remove("selected"); });
     el.classList.add("selected");
     dineOption = el.getAttribute("data-value");
-    // 客人點擊切換內外帶時，馬上重算總金額
     updateTotal();
   });
 });
@@ -158,21 +188,21 @@ document.getElementById("submitBtn").addEventListener("click", function() {
   var errEl = document.getElementById("errorMsg");
   errEl.style.display = "none";
   var name = document.getElementById("customerName").value.trim();
+  
+  var cartItems = [];
+  for (var id in cart) {
+    cartItems.push({ flavor_id: id, qty: cart[id] });
+  }
 
-  if (!selectedFlavor) { errEl.textContent = "請先選擇口味"; errEl.style.display = "block"; return; }
+  if (cartItems.length === 0) { errEl.textContent = "請至少選擇一份餐點"; errEl.style.display = "block"; return; }
   if (!name) { errEl.textContent = "請輸入姓名"; errEl.style.display = "block"; return; }
-
-  var f = menu.find(function(x) { return x.flavor_id === selectedFlavor; });
-  if (!f || f.remaining <= 0) { errEl.textContent = "這個口味已經售完了"; errEl.style.display = "block"; return; }
-  if (qty > f.remaining) { errEl.textContent = "剩餘份數不足,只剩 " + f.remaining + " 份"; errEl.style.display = "block"; return; }
 
   document.getElementById("submitBtn").disabled = true;
 
   fetch(API_URL, {
     method: "POST",
     body: JSON.stringify({
-      flavor_id: selectedFlavor,
-      qty: qty,
+      items: cartItems, // 傳送陣列
       dine_option: dineOption,
       pickup_time: document.getElementById("pickupTime").value,
       customer_name: name,
@@ -189,10 +219,12 @@ document.getElementById("submitBtn").addEventListener("click", function() {
         return;
       }
       var confirmCard = document.getElementById("confirmCard");
-      document.getElementById("confirmDetail").textContent = f.name + " × " + qty + "份(" + dineOption + "),取餐時間 " + document.getElementById("pickupTime").value + "，共 $" + result.total_price;
+      var summaryText = "共 " + cartItems.length + " 項餐點(" + dineOption + "), 取餐時間 " + document.getElementById("pickupTime").value + "，總計 $" + result.total_price;
+      document.getElementById("confirmDetail").textContent = summaryText;
       confirmCard.style.display = "block";
-      qty = 1;
-      document.getElementById("qtyOut").textContent = 1;
+      
+      // 清空購物車
+      cart = {};
       loadMenu();
     })
     .catch(function() {
