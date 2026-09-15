@@ -120,7 +120,7 @@
 
 <script>
 // ===== 請修改以下設定 =====
-var API_URL = "https://script.google.com/macros/s/AKfycbz2kmZiuBAx70YurtJhw1nKormC0J2jJCPBF0BwqRkhuo0lsFyZETsh4Ww6VomSmyj5/exec";
+var API_URL = "https://script.google.com/macros/s/AKfycbw3rPQTNYPCvzjIO7S44INXW2cF306ciVPVtHBm6-t2rIbvwsSNirsSBMOTGhWPQv2g/exec";
 var REFRESH_SECONDS = 15;
 // ============================
 
@@ -189,7 +189,8 @@ function fetchData(isFirstLoad) {
       isSystemActive = true;
       latestMenu = data.menu || [];
       checkNewOrders(data.orders || []);
-      renderOrders(latestMenu, data.orders || []);
+      // 💡 將 today_revenue 傳入渲染函數中
+      renderOrders(latestMenu, data.orders || [], data.today_revenue || 0);
       renderCounterFlavors();
     })
     .catch(function() {
@@ -214,23 +215,30 @@ function checkNewOrders(orders) {
   if (hasNew) playDing();
 }
 
-function renderOrders(menu, orders) {
+function renderOrders(menu, orders, todayRevenue) {
   var today = new Date();
   document.getElementById("dateLabel").textContent = today.toLocaleDateString("zh-TW", { month: "long", day: "numeric", weekday: "long" });
   var summaryEl = document.getElementById("summary");
   summaryEl.innerHTML = "";
+  
   var totalQty = orders.reduce(function(sum, o) { return sum + Number(o.qty); }, 0);
-  var totalRevenue = orders.reduce(function(sum, o) { return sum + Number(o.total_price); }, 0);
+  var pendingRevenue = orders.reduce(function(sum, o) { return sum + Number(o.total_price); }, 0);
 
   var qtyStat = document.createElement("div");
   qtyStat.className = "stat";
   qtyStat.innerHTML = '<p class="stat-label">待處理份數</p><p class="stat-value">' + totalQty + '</p>';
   summaryEl.appendChild(qtyStat);
 
-  var revenueStat = document.createElement("div");
-  revenueStat.className = "stat";
-  revenueStat.innerHTML = '<p class="stat-label">待收/已收金額</p><p class="stat-value">$' + totalRevenue + '</p>';
-  summaryEl.appendChild(revenueStat);
+  var pendingRevStat = document.createElement("div");
+  pendingRevStat.className = "stat";
+  pendingRevStat.innerHTML = '<p class="stat-label">待處理金額</p><p class="stat-value">$' + pendingRevenue + '</p>';
+  summaryEl.appendChild(pendingRevStat);
+
+  // 💡 新增：今日總營業額顯示
+  var totalRevStat = document.createElement("div");
+  totalRevStat.className = "stat";
+  totalRevStat.innerHTML = '<p class="stat-label">今日總營業額</p><p class="stat-value" style="color:#D85A30">$' + todayRevenue + '</p>';
+  summaryEl.appendChild(totalRevStat);
 
   menu.forEach(function(f) {
     var stat = document.createElement("div");
@@ -416,7 +424,7 @@ document.getElementById("counterSubmitBtn").addEventListener("click", function()
       dine_option: counterDineOption,
       pickup_time: document.getElementById("counterPickupTime").value,
       customer_name: name,
-      phone: phone, // 傳送電話資料
+      phone: phone, 
       source: "現場"
     })
   })
