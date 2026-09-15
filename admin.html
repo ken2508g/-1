@@ -8,9 +8,8 @@
   body { font-family: -apple-system, sans-serif; margin: 0; padding: 20px; background: #F7F6F2; color: #222; }
   h1 { font-size: 22px; font-weight: 600; margin: 0 0 4px; }
   p.sub { font-size: 14px; color: #777; margin: 0 0 20px; }
-  #loginBox { max-width: 320px; margin: 60px auto; text-align: center; }
-  #loginBox input { width: 100%; height: 44px; border-radius: 8px; border: 1px solid #ccc; padding: 0 12px; font-size: 16px; box-sizing: border-box; margin-bottom: 12px; }
-  #loginBox button { width: 100%; height: 44px; background: #222; color: #fff; border: none; border-radius: 8px; font-size: 15px; }
+  #loginBox { max-width: 320px; margin: 100px auto; text-align: center; }
+  #loginBox button { width: 100%; height: 52px; background: #222; color: #fff; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer;}
   #headerRow { display: flex; justify-content: space-between; align-items: center; }
   #soundToggle { border: 1px solid #ccc; background: #fff; border-radius: 8px; padding: 8px 14px; font-size: 14px; }
   #tabs { display: flex; gap: 8px; margin: 18px 0; }
@@ -30,12 +29,8 @@
   .tag.counter { background: #FFF3D6; color: #8A6100; }
   #emptyMsg { text-align: center; color: #999; padding: 40px 0; }
   #updatedAt { font-size: 12px; color: #999; margin-top: 14px; }
-  
-  /* 完成按鈕樣式 */
   .complete-btn { background: #0F6E56; color: #fff; border: none; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
   .complete-btn:disabled { background: #ccc; cursor: not-allowed; }
-
-  /* 櫃檯點餐 */
   .flavor { border-radius: 12px; padding: 14px; margin-bottom: 10px; border: 1px solid #ddd; background: #fff; cursor: pointer; }
   .flavor.selected { border: 2px solid #D85A30; }
   .flavor.soldout { opacity: 0.5; cursor: default; }
@@ -62,11 +57,10 @@
 <body>
 
 <div id="loginBox">
-  <h1>訂單後台</h1>
-  <p class="sub">請輸入密碼</p>
-  <input type="password" id="pwInput" placeholder="密碼">
-  <button id="loginBtn">登入</button>
-  <p id="loginError" style="color:#c0392b;font-size:13px;display:none">密碼錯誤</p>
+  <h1>訂單後台系統</h1>
+  <p class="sub">點擊下方按鈕即可進入與開啟音效</p>
+  <button id="loginBtn">進入系統</button>
+  <p id="loginError" style="color:#c0392b;font-size:13px;display:none">連線失敗，請確認網路與網址</p>
 </div>
 
 <div id="dashboard" style="display:none">
@@ -83,7 +77,6 @@
     <button class="tab-btn" id="tabCounter">櫃檯點餐</button>
   </div>
 
-  <!-- 訂單列表 -->
   <div id="ordersView">
     <div id="summary"></div>
     <table id="orderTable">
@@ -96,34 +89,27 @@
     <p id="updatedAt"></p>
   </div>
 
-  <!-- 櫃檯點餐 -->
   <div id="counterView" style="display:none">
     <div id="counterFlavors"></div>
-
     <label class="field-label">數量</label>
     <div class="qty-row">
       <button class="qty-btn" id="counterQtyMinus">−</button>
       <span id="counterQtyOut">1</span>
       <button class="qty-btn" id="counterQtyPlus">+</button>
     </div>
-
     <label class="field-label">內用或外帶</label>
     <div class="dine-options">
       <div class="dine-option selected" data-value="內用">內用</div>
       <div class="dine-option" data-value="外帶">外帶</div>
     </div>
-
     <label class="field-label">取餐時間</label>
     <select id="counterPickupTime"></select>
-
     <label class="field-label">姓名或桌號(選填)</label>
     <input type="text" id="counterCustomerName" placeholder="例如:王先生 / 3號桌">
-
     <div id="counterTotalRow">
       <span>總金額</span>
       <span id="counterTotalPrice">$0</span>
     </div>
-
     <button id="counterSubmitBtn">送出點餐</button>
     <p id="counterErrorMsg"></p>
     <p id="counterSuccessMsg"></p>
@@ -132,15 +118,15 @@
 
 <script>
 // ===== 請修改以下設定 =====
-var API_URL = "https://script.google.com/macros/s/AKfycbz3z1YU7bmYsuDxayzHjHEdovKZmNUc0K_wgOEjb_UJxqZJYc61oLIsKg3al-1x1b-p/exec";
+var API_URL = "請填入Apps Script部署網址";
 var REFRESH_SECONDS = 15;
 // ============================
 
-var adminKey = "";
 var audioCtx = null;
 var soundEnabled = true;
 var knownOrderIds = null;
 var latestMenu = [];
+var isSystemActive = false;
 
 // ---- 音效 ----
 function unlockAudio() {
@@ -173,7 +159,6 @@ document.getElementById("soundToggle").addEventListener("click", function() {
   if (soundEnabled) unlockAudio();
 });
 
-// ---- 分頁切換 ----
 document.getElementById("tabOrders").addEventListener("click", function() {
   document.getElementById("tabOrders").classList.add("active");
   document.getElementById("tabCounter").classList.remove("active");
@@ -187,32 +172,32 @@ document.getElementById("tabCounter").addEventListener("click", function() {
   document.getElementById("ordersView").style.display = "none";
 });
 
-// ---- 登入 ----
+// ---- 進入系統 (取代登入) ----
 document.getElementById("loginBtn").addEventListener("click", function() {
-  adminKey = document.getElementById("pwInput").value;
   unlockAudio();
+  document.getElementById("loginBtn").textContent = "載入中...";
+  document.getElementById("loginBtn").disabled = true;
   fetchData(true);
 });
 
-function fetchData(isLogin) {
-  fetch(API_URL + "?admin=1&key=" + encodeURIComponent(adminKey))
+function fetchData(isFirstLoad) {
+  // 把密碼參數拿掉了，直接抓資料
+  fetch(API_URL + "?admin=1")
     .then(function(res) { return res.json(); })
     .then(function(data) {
-      if (data.error) {
-        if (isLogin) document.getElementById("loginError").style.display = "block";
-        return;
-      }
       document.getElementById("loginBox").style.display = "none";
       document.getElementById("dashboard").style.display = "block";
+      isSystemActive = true;
       latestMenu = data.menu || [];
       checkNewOrders(data.orders || []);
       renderOrders(latestMenu, data.orders || []);
       renderCounterFlavors();
     })
     .catch(function() {
-      if (isLogin) {
-        document.getElementById("loginError").textContent = "連線失敗,請確認網路";
+      if (isFirstLoad) {
         document.getElementById("loginError").style.display = "block";
+        document.getElementById("loginBtn").textContent = "進入系統";
+        document.getElementById("loginBtn").disabled = false;
       }
     });
 }
@@ -230,11 +215,9 @@ function checkNewOrders(orders) {
   if (hasNew) playDing();
 }
 
-// ---- 訂單列表 ----
 function renderOrders(menu, orders) {
   var today = new Date();
   document.getElementById("dateLabel").textContent = today.toLocaleDateString("zh-TW", { month: "long", day: "numeric", weekday: "long" });
-
   var summaryEl = document.getElementById("summary");
   summaryEl.innerHTML = "";
   var totalQty = orders.reduce(function(sum, o) { return sum + Number(o.qty); }, 0);
@@ -278,39 +261,27 @@ function renderOrders(menu, orders) {
       body.appendChild(tr);
     });
     
-    // 綁定「完成」按鈕事件
     document.querySelectorAll(".complete-btn").forEach(function(btn) {
       btn.addEventListener("click", function() {
         var orderId = this.getAttribute("data-id");
         this.disabled = true;
         this.textContent = "處理中";
-        
         fetch(API_URL, {
           method: "POST",
           body: JSON.stringify({ action: "complete", order_id: orderId })
         })
         .then(function(res) { return res.json(); })
         .then(function(result) {
-          if (result.success) {
-            fetchData(false); // 成功後重新載入列表
-          } else {
-            alert("操作失敗: " + result.message);
-            btn.disabled = false;
-            btn.textContent = "完成";
-          }
+          if (result.success) fetchData(false);
+          else { alert("操作失敗: " + result.message); btn.disabled = false; btn.textContent = "完成"; }
         })
-        .catch(function() {
-          alert("網路連線失敗");
-          btn.disabled = false;
-          btn.textContent = "完成";
-        });
+        .catch(function() { alert("網路連線失敗"); btn.disabled = false; btn.textContent = "完成"; });
       });
     });
   }
   document.getElementById("updatedAt").textContent = "更新時間 " + new Date().toLocaleTimeString("zh-TW");
 }
 
-// ---- 櫃檯點餐 ----
 var counterSelectedFlavor = null;
 var counterQty = 1;
 var counterDineOption = "內用";
@@ -322,7 +293,6 @@ function renderCounterFlavors() {
     var soldOut = f.remaining <= 0;
     var div = document.createElement("div");
     div.className = "flavor" + (counterSelectedFlavor === f.flavor_id ? " selected" : "") + (soldOut ? " soldout" : "");
-    // 同時顯示內用與外帶價格
     div.innerHTML = '<div class="flavor-row"><span class="flavor-name">' + f.name + '</span>' +
       '<span class="badge' + (soldOut ? " out" : "") + '">' + (soldOut ? "已售完" : "剩 " + f.remaining + " 份") + '</span></div>' +
       '<div class="flavor-price">內用 $' + f.price_dinein + ' / 外帶 $' + f.price_takeout + '</div>';
@@ -355,7 +325,6 @@ function renderCounterPickupOptions() {
 
 function updateCounterTotal() {
   var f = latestMenu.find(function(x) { return x.flavor_id === counterSelectedFlavor; });
-  // 根據選擇的內用/外帶，動態抓取對應價格
   var price = f ? (counterDineOption === "內用" ? f.price_dinein : f.price_takeout) : 0;
   document.getElementById("counterTotalPrice").textContent = "$" + (price * counterQty);
 }
@@ -367,7 +336,6 @@ document.getElementById("counterQtyPlus").addEventListener("click", function() {
   if (counterQty < 10) { counterQty += 1; document.getElementById("counterQtyOut").textContent = counterQty; updateCounterTotal(); }
 });
 
-// 當切換內用或外帶時，觸發 updateCounterTotal 即時重算金額
 document.querySelectorAll(".dine-option").forEach(function(el) {
   el.addEventListener("click", function() {
     document.querySelectorAll(".dine-option").forEach(function(x) { x.classList.remove("selected"); });
@@ -417,7 +385,7 @@ document.getElementById("counterSubmitBtn").addEventListener("click", function()
       counterQty = 1;
       document.getElementById("counterQtyOut").textContent = 1;
       document.getElementById("counterCustomerName").value = "";
-      document.getElementById("counterTotalPrice").textContent = "$0"; // 送出後金額歸零
+      document.getElementById("counterTotalPrice").textContent = "$0"; 
       fetchData(false);
     })
     .catch(function() {
@@ -430,7 +398,7 @@ document.getElementById("counterSubmitBtn").addEventListener("click", function()
 renderCounterPickupOptions();
 
 setInterval(function() {
-  if (adminKey) fetchData(false);
+  if (isSystemActive) fetchData(false);
 }, REFRESH_SECONDS * 1000);
 </script>
 </body>
