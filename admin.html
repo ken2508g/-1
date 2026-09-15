@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>訂單後台</title>
+<title>訂單後台系統</title>
 <style>
   body { font-family: -apple-system, sans-serif; margin: 0; padding: 20px; background: #F7F6F2; color: #222; }
   h1 { font-size: 22px; font-weight: 600; margin: 0 0 4px; }
@@ -31,27 +31,31 @@
   #updatedAt { font-size: 12px; color: #999; margin-top: 14px; }
   .complete-btn { background: #0F6E56; color: #fff; border: none; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
   .complete-btn:disabled { background: #ccc; cursor: not-allowed; }
-  .flavor { border-radius: 12px; padding: 14px; margin-bottom: 10px; border: 1px solid #ddd; background: #fff; cursor: pointer; }
+  
+  .flavor { border-radius: 12px; padding: 14px; margin-bottom: 10px; border: 1px solid #ddd; background: #fff; }
   .flavor.selected { border: 2px solid #D85A30; }
-  .flavor.soldout { opacity: 0.5; cursor: default; }
+  .flavor.soldout { opacity: 0.5; }
   .flavor-row { display: flex; justify-content: space-between; align-items: center; }
   .flavor-name { font-size: 15px; font-weight: 600; }
   .flavor-price { font-size: 13px; color: #777; margin-top: 3px; }
-  .badge { font-size: 12px; padding: 3px 10px; border-radius: 6px; background: #FAECE7; color: #993C1D; }
+  .badge { font-size: 12px; padding: 3px 10px; border-radius: 6px; }
   .badge.out { background: #eee; color: #999; }
+  
+  .cart-controls { display: flex; align-items: center; justify-content: flex-end; margin-top: 10px; gap: 14px; }
+  .cart-btn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid #ccc; background: #fff; font-size: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #222; }
+  .cart-qty { font-size: 16px; font-weight: 600; min-width: 24px; text-align: center; }
   label.field-label { font-size: 13px; color: #777; display: block; margin: 18px 0 6px; }
-  .qty-row { display: flex; align-items: center; gap: 12px; }
-  .qty-btn { width: 44px; height: 44px; border-radius: 8px; border: 1px solid #ccc; background: #fff; font-size: 20px; }
   select, input { width: 100%; height: 44px; border-radius: 8px; border: 1px solid #ccc; padding: 0 10px; font-size: 16px; box-sizing: border-box; }
   .dine-options { display: flex; gap: 10px; }
   .dine-option { flex: 1; text-align: center; padding: 12px; border-radius: 8px; border: 1px solid #ccc; background: #fff; cursor: pointer; font-size: 15px; }
   .dine-option.selected { border: 2px solid #D85A30; font-weight: 600; }
   #counterTotalRow { display: flex; justify-content: space-between; align-items: baseline; margin-top: 18px; }
   #counterTotalRow span:first-child { font-size: 13px; color: #777; }
-  #counterTotalRow span:last-child { font-size: 22px; font-weight: 600; }
+  #counterTotalRow span:last-child { font-size: 24px; font-weight: 600; color: #D85A30; }
   #counterSubmitBtn { width: 100%; height: 48px; margin-top: 14px; background: #222; color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; }
   #counterErrorMsg { color: #c0392b; font-size: 13px; margin-top: 8px; display: none; }
   #counterSuccessMsg { color: #0F6E56; font-size: 13px; margin-top: 8px; display: none; }
+  option:disabled { color: #999; font-style: italic; text-align: center; }
 </style>
 </head>
 <body>
@@ -81,7 +85,7 @@
     <div id="summary"></div>
     <table id="orderTable">
       <thead>
-        <tr><th>取餐時間</th><th>來源</th><th>姓名</th><th>口味</th><th>數量</th><th>內用/外帶</th><th>金額</th><th>操作</th></tr>
+        <tr><th>時間</th><th>來源</th><th>姓名 / 電話</th><th>口味</th><th>數量</th><th>內用/外帶</th><th>金額</th><th>操作</th></tr>
       </thead>
       <tbody id="orderBody"></tbody>
     </table>
@@ -91,12 +95,6 @@
 
   <div id="counterView" style="display:none">
     <div id="counterFlavors"></div>
-    <label class="field-label">數量</label>
-    <div class="qty-row">
-      <button class="qty-btn" id="counterQtyMinus">−</button>
-      <span id="counterQtyOut">1</span>
-      <button class="qty-btn" id="counterQtyPlus">+</button>
-    </div>
     <label class="field-label">內用或外帶</label>
     <div class="dine-options">
       <div class="dine-option selected" data-value="內用">內用</div>
@@ -106,6 +104,10 @@
     <select id="counterPickupTime"></select>
     <label class="field-label">姓名或桌號(選填)</label>
     <input type="text" id="counterCustomerName" placeholder="例如:王先生 / 3號桌">
+    
+    <label class="field-label">聯絡電話(選填)</label>
+    <input type="tel" id="counterCustomerPhone" placeholder="例如:0912345678">
+
     <div id="counterTotalRow">
       <span>總金額</span>
       <span id="counterTotalPrice">$0</span>
@@ -118,7 +120,7 @@
 
 <script>
 // ===== 請修改以下設定 =====
-var API_URL = "https://script.google.com/macros/s/AKfycbxa__Srd8w9sDq-hnm5uIpIjMMFIzh8uGGuBJs1l2BFPhnScKJz3vVsWuHvcuzolVmh/exec";
+var API_URL = "https://script.google.com/macros/s/AKfycbz2kmZiuBAx70YurtJhw1nKormC0J2jJCPBF0BwqRkhuo0lsFyZETsh4Ww6VomSmyj5/exec";
 var REFRESH_SECONDS = 15;
 // ============================
 
@@ -128,7 +130,6 @@ var knownOrderIds = null;
 var latestMenu = [];
 var isSystemActive = false;
 
-// ---- 音效 ----
 function unlockAudio() {
   try {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -172,7 +173,6 @@ document.getElementById("tabCounter").addEventListener("click", function() {
   document.getElementById("ordersView").style.display = "none";
 });
 
-// ---- 進入系統 (取代登入) ----
 document.getElementById("loginBtn").addEventListener("click", function() {
   unlockAudio();
   document.getElementById("loginBtn").textContent = "載入中...";
@@ -181,7 +181,6 @@ document.getElementById("loginBtn").addEventListener("click", function() {
 });
 
 function fetchData(isFirstLoad) {
-  // 把密碼參數拿掉了，直接抓資料
   fetch(API_URL + "?admin=1")
     .then(function(res) { return res.json(); })
     .then(function(data) {
@@ -230,7 +229,7 @@ function renderOrders(menu, orders) {
 
   var revenueStat = document.createElement("div");
   revenueStat.className = "stat";
-  revenueStat.innerHTML = '<p class="stat-label">待收/已收營收</p><p class="stat-value">$' + totalRevenue + '</p>';
+  revenueStat.innerHTML = '<p class="stat-label">待收/已收金額</p><p class="stat-value">$' + totalRevenue + '</p>';
   summaryEl.appendChild(revenueStat);
 
   menu.forEach(function(f) {
@@ -252,10 +251,11 @@ function renderOrders(menu, orders) {
       var tagClass = o.dine_option === "內用" ? "dinein" : "takeout";
       var sourceClass = o.source === "現場" ? "counter" : "line";
       var sourceLabel = o.source === "現場" ? "現場" : "LINE";
+      var phoneHtml = o.phone ? "<br><span style='font-size:12px;color:#777'>" + o.phone + "</span>" : "";
       var tr = document.createElement("tr");
       tr.innerHTML = "<td>" + o.pickup_time + "</td>" +
         "<td><span class='tag " + sourceClass + "'>" + sourceLabel + "</span></td>" +
-        "<td>" + (o.customer_name || "-") + "</td><td>" + o.flavor_name + "</td><td>" + o.qty +
+        "<td>" + (o.customer_name || "-") + phoneHtml + "</td><td>" + o.flavor_name + "</td><td>" + o.qty +
         "</td><td><span class='tag " + tagClass + "'>" + o.dine_option + "</span></td><td>$" + o.total_price + "</td>" +
         "<td><button class='complete-btn' data-id='" + o.order_id + "'>完成</button></td>";
       body.appendChild(tr);
@@ -282,8 +282,7 @@ function renderOrders(menu, orders) {
   document.getElementById("updatedAt").textContent = "更新時間 " + new Date().toLocaleTimeString("zh-TW");
 }
 
-var counterSelectedFlavor = null;
-var counterQty = 1;
+var counterCart = {};
 var counterDineOption = "內用";
 
 function renderCounterFlavors() {
@@ -291,50 +290,98 @@ function renderCounterFlavors() {
   wrap.innerHTML = "";
   latestMenu.forEach(function(f) {
     var soldOut = f.remaining <= 0;
+    var currentQty = counterCart[f.flavor_id] || 0;
     var div = document.createElement("div");
-    div.className = "flavor" + (counterSelectedFlavor === f.flavor_id ? " selected" : "") + (soldOut ? " soldout" : "");
-    div.innerHTML = '<div class="flavor-row"><span class="flavor-name">' + f.name + '</span>' +
-      '<span class="badge' + (soldOut ? " out" : "") + '">' + (soldOut ? "已售完" : "剩 " + f.remaining + " 份") + '</span></div>' +
-      '<div class="flavor-price">內用 $' + f.price_dinein + ' / 外帶 $' + f.price_takeout + '</div>';
+    div.className = "flavor" + (currentQty > 0 ? " selected" : "") + (soldOut ? " soldout" : "");
+    
+    var badgeHtml = soldOut ? '<span class="badge out">已售完</span>' : '';
+    
+    var html = '<div class="flavor-row"><span class="flavor-name">' + f.name + '</span>' + badgeHtml + '</div>';
+    html += '<div class="flavor-price">內用 $' + f.price_dinein + ' / 外帶 $' + f.price_takeout + '</div>';
+    
     if (!soldOut) {
-      div.addEventListener("click", function() {
-        counterSelectedFlavor = f.flavor_id;
+      html += '<div class="cart-controls">';
+      html += '<button class="cart-btn minus" data-id="' + f.flavor_id + '">−</button>';
+      html += '<span class="cart-qty">' + currentQty + '</span>';
+      html += '<button class="cart-btn plus" data-id="' + f.flavor_id + '">+</button>';
+      html += '</div>';
+    }
+    div.innerHTML = html;
+    wrap.appendChild(div);
+  });
+
+  document.querySelectorAll('.cart-btn.minus').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var id = this.getAttribute('data-id');
+      if (counterCart[id] > 0) {
+        counterCart[id]--;
+        if (counterCart[id] === 0) delete counterCart[id];
         renderCounterFlavors();
         updateCounterTotal();
-      });
-    }
-    wrap.appendChild(div);
+      }
+    });
+  });
+
+  document.querySelectorAll('.cart-btn.plus').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var id = this.getAttribute('data-id');
+      var f = latestMenu.find(function(x) { return x.flavor_id === id; });
+      var current = counterCart[id] || 0;
+      if (current < f.remaining && current < 10) {
+        counterCart[id] = current + 1;
+        renderCounterFlavors();
+        updateCounterTotal();
+      } else if (current >= f.remaining) {
+        alert("剩餘數量不足");
+      }
+    });
   });
 }
 
 function renderCounterPickupOptions() {
   var sel = document.getElementById("counterPickupTime");
   sel.innerHTML = "";
+  
   var nowOpt = document.createElement("option");
   nowOpt.value = "立即";
   nowOpt.textContent = "立即製作";
   sel.appendChild(nowOpt);
-  var times = ["11:30","11:45","12:00","12:15","12:30","12:45","13:00"];
+
+  var dayOfWeek = new Date().getDay(); 
+  var times = [];
+
+  if (dayOfWeek === 3 || dayOfWeek === 4) {
+    times = [
+      "11:30","11:45","12:00","12:15","12:30","12:45","13:00",
+      "--- 晚餐時段 ---",
+      "17:30","17:45","18:00","18:15","18:30"
+    ];
+  } else {
+    times = ["11:30","11:45","12:00","12:15","12:30","12:45","13:00"];
+  }
+
   times.forEach(function(t) {
     var opt = document.createElement("option");
     opt.value = t;
     opt.textContent = t;
+    if (t === "--- 晚餐時段 ---") {
+      opt.disabled = true;
+    }
     sel.appendChild(opt);
   });
 }
 
 function updateCounterTotal() {
-  var f = latestMenu.find(function(x) { return x.flavor_id === counterSelectedFlavor; });
-  var price = f ? (counterDineOption === "內用" ? f.price_dinein : f.price_takeout) : 0;
-  document.getElementById("counterTotalPrice").textContent = "$" + (price * counterQty);
+  var total = 0;
+  for (var id in counterCart) {
+    var f = latestMenu.find(function(x) { return x.flavor_id === id; });
+    if (f) {
+      var price = (counterDineOption === "內用") ? f.price_dinein : f.price_takeout;
+      total += price * counterCart[id];
+    }
+  }
+  document.getElementById("counterTotalPrice").textContent = "$" + total;
 }
-
-document.getElementById("counterQtyMinus").addEventListener("click", function() {
-  if (counterQty > 1) { counterQty -= 1; document.getElementById("counterQtyOut").textContent = counterQty; updateCounterTotal(); }
-});
-document.getElementById("counterQtyPlus").addEventListener("click", function() {
-  if (counterQty < 10) { counterQty += 1; document.getElementById("counterQtyOut").textContent = counterQty; updateCounterTotal(); }
-});
 
 document.querySelectorAll(".dine-option").forEach(function(el) {
   el.addEventListener("click", function() {
@@ -351,23 +398,25 @@ document.getElementById("counterSubmitBtn").addEventListener("click", function()
   errEl.style.display = "none";
   okEl.style.display = "none";
 
-  if (!counterSelectedFlavor) { errEl.textContent = "請先選擇口味"; errEl.style.display = "block"; return; }
-  var f = latestMenu.find(function(x) { return x.flavor_id === counterSelectedFlavor; });
-  if (!f || f.remaining <= 0) { errEl.textContent = "這個口味已經售完了"; errEl.style.display = "block"; return; }
-  if (counterQty > f.remaining) { errEl.textContent = "剩餘份數不足,只剩 " + f.remaining + " 份"; errEl.style.display = "block"; return; }
+  var cartItems = [];
+  for (var id in counterCart) {
+    cartItems.push({ flavor_id: id, qty: counterCart[id] });
+  }
+
+  if (cartItems.length === 0) { errEl.textContent = "請至少選擇一份餐點"; errEl.style.display = "block"; return; }
 
   var name = document.getElementById("counterCustomerName").value.trim() || "現場客人";
-  var pickupTime = document.getElementById("counterPickupTime").value;
+  var phone = document.getElementById("counterCustomerPhone").value.trim() || "";
   document.getElementById("counterSubmitBtn").disabled = true;
 
   fetch(API_URL, {
     method: "POST",
     body: JSON.stringify({
-      flavor_id: counterSelectedFlavor,
-      qty: counterQty,
+      items: cartItems,
       dine_option: counterDineOption,
-      pickup_time: pickupTime,
+      pickup_time: document.getElementById("counterPickupTime").value,
       customer_name: name,
+      phone: phone, // 傳送電話資料
       source: "現場"
     })
   })
@@ -379,12 +428,11 @@ document.getElementById("counterSubmitBtn").addEventListener("click", function()
         errEl.style.display = "block";
         return;
       }
-      okEl.textContent = "已送出:" + f.name + " × " + counterQty + "份,共 $" + result.total_price;
+      okEl.textContent = "送出成功，共 $" + result.total_price;
       okEl.style.display = "block";
-      counterSelectedFlavor = null;
-      counterQty = 1;
-      document.getElementById("counterQtyOut").textContent = 1;
+      counterCart = {};
       document.getElementById("counterCustomerName").value = "";
+      document.getElementById("counterCustomerPhone").value = "";
       document.getElementById("counterTotalPrice").textContent = "$0"; 
       fetchData(false);
     })
