@@ -17,12 +17,9 @@
   .flavor-price { font-size: 13px; color: #777; margin-top: 4px; }
   .badge { font-size: 12px; padding: 3px 10px; border-radius: 6px; }
   .badge.out { background: #eee; color: #999; }
-  
-  /* 購物車按鈕樣式 */
   .cart-controls { display: flex; align-items: center; justify-content: flex-end; margin-top: 10px; gap: 14px; }
   .cart-btn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid #ccc; background: #fff; font-size: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #222; }
   .cart-qty { font-size: 16px; font-weight: 600; min-width: 24px; text-align: center; }
-
   label.field-label { font-size: 13px; color: #777; display: block; margin: 18px 0 6px; }
   select, input { width: 100%; height: 42px; border-radius: 8px; border: 1px solid #ccc; padding: 0 10px; font-size: 15px; box-sizing: border-box; }
   .dine-options { display: flex; gap: 10px; }
@@ -34,11 +31,12 @@
   button#submitBtn { width: 100%; height: 46px; margin-top: 14px; background: #222; color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer;}
   #errorMsg { color: #c0392b; font-size: 13px; margin-top: 8px; display: none; }
   #confirmCard { display: none; margin-top: 20px; background: #fff; border: 1px solid #ddd; border-radius: 12px; padding: 16px; }
+  option:disabled { color: #999; font-style: italic; text-align: center; }
 </style>
 </head>
 <body>
   <h1>今日餐點</h1>
-  <p class="sub">每份限量供應，取餐前請準時取餐</p>
+  <p class="sub">每份限量供應，請準時取餐</p>
 
   <div id="flavors"></div>
 
@@ -53,6 +51,9 @@
 
   <label class="field-label">姓名(方便取餐時核對)</label>
   <input type="text" id="customerName" placeholder="請輸入姓名">
+  
+  <label class="field-label">聯絡電話(必填)</label>
+  <input type="tel" id="customerPhone" placeholder="請輸入手機號碼">
 
   <div id="totalRow">
     <span>總金額</span>
@@ -70,11 +71,11 @@
 <script>
 // ===== 請修改以下兩個設定 =====
 var LIFF_ID = "請填入你的LIFF ID";
-var API_URL = "https://script.google.com/macros/s/AKfycbxa__Srd8w9sDq-hnm5uIpIjMMFIzh8uGGuBJs1l2BFPhnScKJz3vVsWuHvcuzolVmh/exec";
+var API_URL = "https://script.google.com/macros/s/AKfycbz2kmZiuBAx70YurtJhw1nKormC0J2jJCPBF0BwqRkhuo0lsFyZETsh4Ww6VomSmyj5/exec";
 // ================================
 
 var menu = [];
-var cart = {}; // 購物車物件: { flavor_id: qty }
+var cart = {}; 
 var dineOption = "內用";
 var userProfile = { displayName: "" };
 
@@ -84,17 +85,13 @@ function renderFlavors() {
   menu.forEach(function(f) {
     var soldOut = f.remaining <= 0;
     var currentQty = cart[f.flavor_id] || 0;
-    
     var div = document.createElement("div");
     div.className = "flavor" + (currentQty > 0 ? " selected" : "") + (soldOut ? " soldout" : "");
-    
-    // 移除「剩幾份」的顯示，只在賣完時顯示已售完
     var badgeHtml = soldOut ? '<span class="badge out">已售完</span>' : '';
     
     var html = '<div class="flavor-row"><span class="flavor-name">' + f.name + '</span>' + badgeHtml + '</div>';
     html += '<div class="flavor-price">內用 $' + f.price_dinein + ' / 外帶 $' + f.price_takeout + '</div>';
     
-    // 如果還沒賣完，顯示加減按鈕
     if (!soldOut) {
       html += '<div class="cart-controls">';
       html += '<button class="cart-btn minus" data-id="' + f.flavor_id + '">−</button>';
@@ -102,12 +99,10 @@ function renderFlavors() {
       html += '<button class="cart-btn plus" data-id="' + f.flavor_id + '">+</button>';
       html += '</div>';
     }
-    
     div.innerHTML = html;
     wrap.appendChild(div);
   });
 
-  // 綁定購物車按鈕事件
   document.querySelectorAll('.cart-btn.minus').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var id = this.getAttribute('data-id');
@@ -125,7 +120,6 @@ function renderFlavors() {
       var id = this.getAttribute('data-id');
       var f = menu.find(function(x) { return x.flavor_id === id; });
       var current = cart[id] || 0;
-      
       if (current < f.remaining && current < 10) {
         cart[id] = current + 1;
         renderFlavors();
@@ -140,11 +134,26 @@ function renderFlavors() {
 function renderPickupOptions() {
   var sel = document.getElementById("pickupTime");
   sel.innerHTML = "";
-  var times = ["11:30","11:45","12:00","12:15","12:30","12:45","13:00"];
+  var dayOfWeek = new Date().getDay(); 
+  var times = [];
+
+  if (dayOfWeek === 3 || dayOfWeek === 4) {
+    times = [
+      "11:30","11:45","12:00","12:15","12:30","12:45","13:00",
+      "--- 晚餐時段 ---",
+      "17:30","17:45","18:00","18:15","18:30"
+    ];
+  } else {
+    times = ["11:30","11:45","12:00","12:15","12:30","12:45","13:00"];
+  }
+
   times.forEach(function(t) {
     var opt = document.createElement("option");
     opt.value = t;
     opt.textContent = t;
+    if (t === "--- 晚餐時段 ---") {
+      opt.disabled = true;
+    }
     sel.appendChild(opt);
   });
 }
@@ -188,6 +197,7 @@ document.getElementById("submitBtn").addEventListener("click", function() {
   var errEl = document.getElementById("errorMsg");
   errEl.style.display = "none";
   var name = document.getElementById("customerName").value.trim();
+  var phone = document.getElementById("customerPhone").value.trim();
   
   var cartItems = [];
   for (var id in cart) {
@@ -196,16 +206,18 @@ document.getElementById("submitBtn").addEventListener("click", function() {
 
   if (cartItems.length === 0) { errEl.textContent = "請至少選擇一份餐點"; errEl.style.display = "block"; return; }
   if (!name) { errEl.textContent = "請輸入姓名"; errEl.style.display = "block"; return; }
+  if (!phone) { errEl.textContent = "請輸入聯絡電話"; errEl.style.display = "block"; return; }
 
   document.getElementById("submitBtn").disabled = true;
 
   fetch(API_URL, {
     method: "POST",
     body: JSON.stringify({
-      items: cartItems, // 傳送陣列
+      items: cartItems,
       dine_option: dineOption,
       pickup_time: document.getElementById("pickupTime").value,
       customer_name: name,
+      phone: phone, // 傳送電話資料
       line_user_id: userProfile.userId || ""
     })
   })
@@ -223,7 +235,6 @@ document.getElementById("submitBtn").addEventListener("click", function() {
       document.getElementById("confirmDetail").textContent = summaryText;
       confirmCard.style.display = "block";
       
-      // 清空購物車
       cart = {};
       loadMenu();
     })
