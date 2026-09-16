@@ -5,67 +5,114 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>本週菜單 - Telar Studio</title>
   <style>
-    body { font-family: -apple-system, sans-serif; max-width: 420px; margin: 0 auto; padding: 20px; background: #F7F6F2; color: #222; }
-    h1 { font-size: 20px; font-weight: 600; margin: 0 0 6px; text-align: center; }
-    p.sub { font-size: 14px; color: #777; margin: 0 0 24px; text-align: center; }
-    .flavor { border-radius: 12px; padding: 18px; margin-bottom: 14px; background: #fff; border: 1px solid #ddd; }
-    .flavor.soldout { opacity: 0.5; }
-    .flavor-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-    .flavor-name { font-size: 17px; font-weight: 600; color: #222; }
-    .badge { font-size: 12px; padding: 4px 10px; border-radius: 6px; }
-    .badge.out { background: #eee; color: #999; }
-    .badge.avail { background: #E1F5EE; color: #0F6E56; font-weight: 600;}
-    .flavor-price { font-size: 14px; color: #555; }
-    .price-tag { display: inline-block; background: #F7F6F2; padding: 6px 10px; border-radius: 6px; margin-right: 8px; margin-top: 4px;}
-    #loading { text-align: center; color: #999; margin-top: 40px; font-size: 15px; }
+    body { font-family: -apple-system, sans-serif; max-width: 420px; margin: 0 auto; padding: 20px; background: #F7F6F2; color: #222; line-height: 1.6; }
+    h1 { font-size: 22px; font-weight: 600; margin: 0 0 20px; text-align: center; color: #222; }
+    
+    /* 卡片樣式 */
+    .card { background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 16px; border: 1px solid #ddd; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
+    h2 { font-size: 16px; font-weight: 600; margin: 0 0 14px; color: #D85A30; border-bottom: 2px solid #F7F6F2; padding-bottom: 8px; }
+    
+    /* 營業資訊排版 */
+    .info-row { display: flex; margin-bottom: 10px; font-size: 14px; }
+    .info-label { font-weight: 600; width: 75px; flex-shrink: 0; color: #555; }
+    .info-content { color: #333; }
+    
+    /* 價位標籤 */
+    .price-tag { display: inline-block; background: #F7F6F2; padding: 4px 10px; border-radius: 6px; font-size: 13px; margin-right: 8px; font-weight: 600; color: #555; border: 1px solid #eee; }
+    
+    /* 每日菜單排版 */
+    .day-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid #eee; }
+    .day-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .day-date { font-weight: 600; width: 90px; flex-shrink: 0; font-size: 15px; }
+    .day-menu { flex: 1; font-size: 15px; color: #222; }
+    .day-menu.closed { color: #999; font-weight: 500; }
+    .day-menu div { margin-bottom: 4px; }
+    .day-menu div:last-child { margin-bottom: 0; }
+    
+    /* 底部提示 */
+    .footer-note { text-align: center; font-size: 13px; color: #999; margin-top: 20px; }
   </style>
 </head>
 <body>
-  <h1>本週菜單</h1>
-  <p class="sub">每份餐點皆為用心製作，限量供應</p>
   
-  <div id="loading">菜單讀取中...</div>
-  <div id="flavors"></div>
+  <h1>Telar Studio<br>本週蔬食菜單</h1>
+  
+  <!-- 營業資訊區塊 -->
+  <div class="card">
+    <h2>📌 營業資訊</h2>
+    <div class="info-row">
+      <div class="info-label">營業時間</div>
+      <div class="info-content">
+        週一、六、日：11:30 - 14:00<br>
+        週三、週四：11:30 - 14:00、17:00 - 19:00<br>
+        <span style="color:#D85A30; font-weight:600;">週二、週五：店休</span>
+      </div>
+    </div>
+    <div class="info-row" style="margin-top:14px; align-items:center;">
+      <div class="info-label">餐點價格</div>
+      <div class="info-content">
+        <span class="price-tag">內用 $220</span>
+        <span class="price-tag">外帶 $140</span>
+      </div>
+    </div>
+  </div>
 
-  <script>
-    // ===== ⚠️ 請填入你原本的 Apps Script 部署網址 =====
-    var API_URL = "https://script.google.com/macros/s/AKfycbxLUGCQAjO9NvT-pr5htgB1P3Cd73fgKS0aFj4N3LQjdGhdbVY1C_GH8L3Gu76vE2mI/exec";
-    // ===============================================
+  <!-- 本週菜單區塊 -->
+  <div class="card">
+    <h2>🗓️ 8/31 - 9/6 菜單</h2>
+    
+    <div class="day-row">
+      <div class="day-date">8/31 (一)</div>
+      <div class="day-menu">
+        <div>京醬豆包</div>
+        <div>麻婆豆腐</div>
+      </div>
+    </div>
+    
+    <div class="day-row">
+      <div class="day-date">9/1 (二)</div>
+      <div class="day-menu closed">店休</div>
+    </div>
 
-    fetch(API_URL)
-      .then(function(res) { return res.json(); })
-      .then(function(data) {
-        document.getElementById("loading").style.display = "none";
-        var wrap = document.getElementById("flavors");
-        var menu = data.menu || [];
-        
-        if (menu.length === 0) {
-          wrap.innerHTML = "<p style='text-align:center; color:#999;'>今日尚未更新菜單</p>";
-          return;
-        }
+    <div class="day-row">
+      <div class="day-date">9/2 (三)</div>
+      <div class="day-menu">
+        <div>三杯杏鮑菇豆干</div>
+        <div>椒麻豆包</div>
+      </div>
+    </div>
 
-        menu.forEach(function(f) {
-          var soldOut = f.remaining <= 0;
-          var div = document.createElement("div");
-          div.className = "flavor" + (soldOut ? " soldout" : "");
-          
-          var statusBadge = soldOut 
-            ? '<span class="badge out">已售完</span>' 
-            : '<span class="badge avail">供應中</span>';
-          
-          var html = '<div class="flavor-row"><span class="flavor-name">' + f.name + '</span>' + statusBadge + '</div>';
-          html += '<div class="flavor-price">';
-          html += '<span class="price-tag">內用 $' + f.price_dinein + '</span>';
-          html += '<span class="price-tag">外帶 $' + f.price_takeout + '</span>';
-          html += '</div>';
-          
-          div.innerHTML = html;
-          wrap.appendChild(div);
-        });
-      })
-      .catch(function() {
-        document.getElementById("loading").textContent = "菜單載入失敗，請稍後再試";
-      });
-  </script>
+    <div class="day-row">
+      <div class="day-date">9/3 (四)</div>
+      <div class="day-menu">
+        <div>宮保猴頭菇豆干</div>
+        <div>黃金菇豆包</div>
+      </div>
+    </div>
+
+    <div class="day-row">
+      <div class="day-date">9/4 (五)</div>
+      <div class="day-menu closed">店休</div>
+    </div>
+
+    <div class="day-row">
+      <div class="day-date">9/5 (六)</div>
+      <div class="day-menu">
+        <div>豆包卷</div>
+        <div>客家小炒</div>
+      </div>
+    </div>
+
+    <div class="day-row">
+      <div class="day-date">9/6 (日)</div>
+      <div class="day-menu">
+        <div>五味醬豆腐</div>
+        <div>糖醋豆包</div>
+      </div>
+    </div>
+  </div>
+  
+  <p class="footer-note">如需預定當日餐點，請點擊圖文選單的「預定餐點」</p>
+
 </body>
 </html>
