@@ -32,6 +32,9 @@
   #errorMsg { color: #c0392b; font-size: 13px; margin-top: 8px; display: none; }
   #confirmCard { display: none; margin-top: 20px; background: #fff; border: 1px solid #ddd; border-radius: 12px; padding: 16px; }
   option:disabled { color: #999; font-style: italic; text-align: center; }
+  
+  /* 新增售完提示的樣式 */
+  .soldout-notice { color: #D85A30; font-size: 13px; margin-top: 10px; font-weight: 600; text-align: right; }
 </style>
 </head>
 <body>
@@ -71,7 +74,7 @@
 <script>
 // ===== 請修改以下兩個設定 =====
 var LIFF_ID = "請填入你的LIFF ID";
-var API_URL = "https://script.google.com/macros/s/AKfycbz2kmZiuBAx70YurtJhw1nKormC0J2jJCPBF0BwqRkhuo0lsFyZETsh4Ww6VomSmyj5/exec";
+var API_URL = "https://script.google.com/macros/s/AKfycbzsuIldKtpwOGLxnK1Pw7onQTa8_QA7I8hCquVrxkwg8yRw97ZjNVkIJCAyvIAJj13x/exec";
 // ================================
 
 var menu = [];
@@ -98,7 +101,11 @@ function renderFlavors() {
       html += '<span class="cart-qty">' + currentQty + '</span>';
       html += '<button class="cart-btn plus" data-id="' + f.flavor_id + '">+</button>';
       html += '</div>';
+    } else {
+      // 💡 當售完時，顯示這段提示文字
+      html += '<div class="soldout-notice">💡 請到 LINE 詢問還有沒有</div>';
     }
+    
     div.innerHTML = html;
     wrap.appendChild(div);
   });
@@ -217,7 +224,7 @@ document.getElementById("submitBtn").addEventListener("click", function() {
       dine_option: dineOption,
       pickup_time: document.getElementById("pickupTime").value,
       customer_name: name,
-      phone: phone, // 傳送電話資料
+      phone: phone,
       line_user_id: userProfile.userId || ""
     })
   })
