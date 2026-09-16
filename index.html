@@ -32,13 +32,11 @@
   #errorMsg { color: #c0392b; font-size: 13px; margin-top: 8px; display: none; }
   #confirmCard { display: none; margin-top: 20px; background: #fff; border: 1px solid #ddd; border-radius: 12px; padding: 16px; }
   option:disabled { color: #999; font-style: italic; text-align: center; }
-  
-  /* 新增售完提示的樣式 */
   .soldout-notice { color: #D85A30; font-size: 13px; margin-top: 10px; font-weight: 600; text-align: right; }
 </style>
 </head>
 <body>
-  <h1>Telar Studio預約點餐系統</h1>
+  <h1>今日餐點</h1>
   <p class="sub">每日限量供應，請準時取餐</p>
 
   <div id="flavors"></div>
@@ -57,6 +55,10 @@
   
   <label class="field-label">聯絡電話(必填)</label>
   <input type="tel" id="customerPhone" placeholder="請輸入手機號碼">
+  
+  <!-- 💡 新增備註欄位 -->
+  <label class="field-label">備註(選填，例如：加辣、自備餐盒)</label>
+  <input type="text" id="orderRemark" placeholder="如有特殊需求請填寫">
 
   <div id="totalRow">
     <span>總金額</span>
@@ -73,8 +75,7 @@
 
 <script>
 // ===== 請修改以下兩個設定 =====
-var LIFF_ID = "請填入你的LIFF ID";
-var API_URL = "https://script.google.com/macros/s/AKfycbzsuIldKtpwOGLxnK1Pw7onQTa8_QA7I8hCquVrxkwg8yRw97ZjNVkIJCAyvIAJj13x/exec";
+var API_URL = "https://script.google.com/macros/s/AKfycbz0iwuiklK29eAVtoqNAQKdIjFv3CZpkunf_oJT8HgOxneSl_ra5Reqdiyr3jhfsJXv/exec";
 // ================================
 
 var menu = [];
@@ -102,7 +103,6 @@ function renderFlavors() {
       html += '<button class="cart-btn plus" data-id="' + f.flavor_id + '">+</button>';
       html += '</div>';
     } else {
-      // 💡 當售完時，顯示這段提示文字
       html += '<div class="soldout-notice">💡 請到 LINE 詢問還有沒有</div>';
     }
     
@@ -146,12 +146,12 @@ function renderPickupOptions() {
 
   if (dayOfWeek === 3 || dayOfWeek === 4) {
     times = [
-      "11:30","11:45","12:00","12:15","12:30","12:45","13:00",
+      "11:30","11:45","12:00","12:15","12:30","12:45","13:00","13:30","13:45"
       "--- 晚餐時段 ---",
-      "17:30","17:45","18:00","18:15","18:30"
+      "17:00","17:30","17:45","18:00","18:15","18:30","18:45"
     ];
   } else {
-    times = ["11:30","11:45","12:00","12:15","12:30","12:45","13:00"];
+    times = ["11:30","11:45","12:00","12:15","12:30","12:45","13:00","13:30","13:45"];
   }
 
   times.forEach(function(t) {
@@ -205,6 +205,7 @@ document.getElementById("submitBtn").addEventListener("click", function() {
   errEl.style.display = "none";
   var name = document.getElementById("customerName").value.trim();
   var phone = document.getElementById("customerPhone").value.trim();
+  var remark = document.getElementById("orderRemark").value.trim(); // 💡 抓取備註
   
   var cartItems = [];
   for (var id in cart) {
@@ -225,6 +226,7 @@ document.getElementById("submitBtn").addEventListener("click", function() {
       pickup_time: document.getElementById("pickupTime").value,
       customer_name: name,
       phone: phone,
+      remark: remark, // 💡 傳送備註
       line_user_id: userProfile.userId || ""
     })
   })
