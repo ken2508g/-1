@@ -56,6 +56,7 @@
   <label class="field-label">聯絡電話(必填)</label>
   <input type="tel" id="customerPhone" placeholder="請輸入手機號碼">
   
+  <!-- 💡 備註欄位 -->
   <label class="field-label">備註(選填，例如：自備餐盒)</label>
   <input type="text" id="orderRemark" placeholder="如有特殊需求請填寫">
 
@@ -74,10 +75,10 @@
   </div>
 
 <script>
-// ===== 請修改以下兩個設定 =====
+// ===== ⚠️ 請務必修改這兩個設定 ⚠️ =====
 var LIFF_ID = "2011627242-SuwYkGQ8";
-var API_URL = "https://script.google.com/macros/s/AKfycbzT_tVsL3UPG2PmGerU4h-H7J4IJktiJ9YKyIuN9Cd77mTOUe1K0IDOQtgsTQocCgJl/exec";
-// ================================
+var API_URL = "https://script.google.com/macros/s/AKfycbzT_tVsL3UPG2PmGerU4h-H7J4IJktiJ9YKyIuN9Cd77mTOUe1K0IDOQtgsTQocCgJl/execipt部署網址";
+// ===================================
 
 var menu = [];
 var cart = {}; 
@@ -104,6 +105,7 @@ function renderFlavors() {
       html += '<button class="cart-btn plus" data-id="' + f.flavor_id + '">+</button>';
       html += '</div>';
     } else {
+      // 💡 已售完提示
       html += '<div class="soldout-notice">💡 請到 LINE 詢問還有沒有</div>';
     }
     
