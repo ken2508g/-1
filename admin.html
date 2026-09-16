@@ -23,7 +23,6 @@
   th, td { text-align: left; padding: 12px 14px; font-size: 15px; border-bottom: 1px solid #eee; }
   th { color: #777; font-size: 13px; font-weight: 500; background: #fafafa; }
   
-  /* 💡 標籤樣式：加入 Uber Eats 的專屬綠色 */
   .tag { font-size: 12px; padding: 2px 8px; border-radius: 6px; background: #eee; }
   .tag.dinein { background: #FAECE7; color: #993C1D; }
   .tag.takeout { background: #E1F5EE; color: #0F6E56; }
@@ -31,8 +30,8 @@
   .tag.line { background: #E1F0FF; color: #0B5FBF; }
   .tag.counter { background: #FFF3D6; color: #8A6100; }
   
-  #emptyMsg { text-align: center; color: #999; padding: 40px 0; }
-  #updatedAt { font-size: 12px; color: #999; margin-top: 14px; }
+  .emptyMsg { text-align: center; color: #999; padding: 40px 0; display: none; }
+  .updatedAt { font-size: 12px; color: #999; margin-top: 14px; }
   .complete-btn { background: #0F6E56; color: #fff; border: none; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
   .complete-btn:disabled { background: #ccc; cursor: not-allowed; }
   
@@ -51,7 +50,6 @@
   label.field-label { font-size: 13px; color: #777; display: block; margin: 18px 0 6px; }
   select, input { width: 100%; height: 44px; border-radius: 8px; border: 1px solid #ccc; padding: 0 10px; font-size: 16px; box-sizing: border-box; }
   
-  /* 💡 調整選項欄位，讓三個選項能平均分配 */
   .dine-options { display: flex; gap: 8px; }
   .dine-option { flex: 1; text-align: center; padding: 12px 4px; border-radius: 8px; border: 1px solid #ccc; background: #fff; cursor: pointer; font-size: 14px; }
   .dine-option.selected { border: 2px solid #D85A30; font-weight: 600; }
@@ -84,22 +82,39 @@
   </div>
 
   <div id="tabs">
-    <button class="tab-btn active" id="tabOrders">訂單列表</button>
+    <button class="tab-btn active" id="tabOrders">待處理</button>
+    <button class="tab-btn" id="tabCompleted">已完成明細</button>
     <button class="tab-btn" id="tabCounter">櫃檯點餐</button>
   </div>
 
+  <!-- 總結卡片 (固定顯示在列表上方) -->
+  <div id="summary" style="display:none;"></div>
+
+  <!-- 待處理視窗 -->
   <div id="ordersView">
-    <div id="summary"></div>
     <table id="orderTable">
       <thead>
         <tr><th>時間</th><th>來源</th><th>姓名 / 電話</th><th>口味</th><th>數量</th><th>內用/外帶/UE</th><th>金額</th><th>操作</th></tr>
       </thead>
       <tbody id="orderBody"></tbody>
     </table>
-    <p id="emptyMsg" style="display:none">目前沒有待處理的訂單</p>
-    <p id="updatedAt"></p>
+    <p id="emptyMsg" class="emptyMsg">目前沒有待處理的訂單</p>
+    <p id="updatedAt" class="updatedAt"></p>
   </div>
 
+  <!-- 已完成視窗 -->
+  <div id="completedView" style="display:none">
+    <table id="completedTable">
+      <thead>
+        <tr><th>時間</th><th>來源</th><th>姓名 / 電話</th><th>口味</th><th>數量</th><th>內用/外帶/UE</th><th>金額</th><th>狀態</th></tr>
+      </thead>
+      <tbody id="completedBody"></tbody>
+    </table>
+    <p id="completedEmptyMsg" class="emptyMsg">目前沒有已完成的訂單</p>
+    <p id="completedUpdatedAt" class="updatedAt"></p>
+  </div>
+
+  <!-- 櫃檯點餐視窗 -->
   <div id="counterView" style="display:none">
     <div id="counterFlavors"></div>
     <label class="field-label">用餐方式</label>
@@ -128,7 +143,7 @@
 
 <script>
 // ===== 請修改以下設定 =====
-var API_URL = "https://script.google.com/macros/s/AKfycbzsuIldKtpwOGLxnK1Pw7onQTa8_QA7I8hCquVrxkwg8yRw97ZjNVkIJCAyvIAJj13x/exec";
+var API_URL = "https://script.google.com/macros/s/AKfycbyVt17gfyiGvxbRjDnxEtS_i_aDLyTfF6fAsM7DTB_b5LlyIRWOPYq7VML8HqbtDwZ4/exec";
 var REFRESH_SECONDS = 15;
 // ============================
 
@@ -168,17 +183,30 @@ document.getElementById("soundToggle").addEventListener("click", function() {
   if (soundEnabled) unlockAudio();
 });
 
+// 切換 Tab 功能
 document.getElementById("tabOrders").addEventListener("click", function() {
-  document.getElementById("tabOrders").classList.add("active");
-  document.getElementById("tabCounter").classList.remove("active");
+  document.querySelectorAll(".tab-btn").forEach(function(b){ b.classList.remove("active"); });
+  this.classList.add("active");
+  document.getElementById("summary").style.display = "flex";
   document.getElementById("ordersView").style.display = "block";
+  document.getElementById("completedView").style.display = "none";
+  document.getElementById("counterView").style.display = "none";
+});
+document.getElementById("tabCompleted").addEventListener("click", function() {
+  document.querySelectorAll(".tab-btn").forEach(function(b){ b.classList.remove("active"); });
+  this.classList.add("active");
+  document.getElementById("summary").style.display = "none"; // 已完成明細畫面不顯示統計卡片，畫面更乾淨
+  document.getElementById("ordersView").style.display = "none";
+  document.getElementById("completedView").style.display = "block";
   document.getElementById("counterView").style.display = "none";
 });
 document.getElementById("tabCounter").addEventListener("click", function() {
-  document.getElementById("tabCounter").classList.add("active");
-  document.getElementById("tabOrders").classList.remove("active");
-  document.getElementById("counterView").style.display = "block";
+  document.querySelectorAll(".tab-btn").forEach(function(b){ b.classList.remove("active"); });
+  this.classList.add("active");
+  document.getElementById("summary").style.display = "none";
   document.getElementById("ordersView").style.display = "none";
+  document.getElementById("completedView").style.display = "none";
+  document.getElementById("counterView").style.display = "block";
 });
 
 document.getElementById("loginBtn").addEventListener("click", function() {
@@ -194,10 +222,18 @@ function fetchData(isFirstLoad) {
     .then(function(data) {
       document.getElementById("loginBox").style.display = "none";
       document.getElementById("dashboard").style.display = "block";
+      
+      // 首次載入時顯示統計卡片
+      if (document.getElementById("tabOrders").classList.contains("active")) {
+        document.getElementById("summary").style.display = "flex";
+      }
+
       isSystemActive = true;
       latestMenu = data.menu || [];
       checkNewOrders(data.orders || []);
-      renderOrders(latestMenu, data.orders || [], data.today_revenue || 0);
+      
+      // 💡 傳入 pending 和 completed 兩組訂單
+      renderOrders(latestMenu, data.orders || [], data.completed_orders || [], data.today_revenue || 0);
       renderCounterFlavors();
     })
     .catch(function() {
@@ -222,9 +258,11 @@ function checkNewOrders(orders) {
   if (hasNew) playDing();
 }
 
-function renderOrders(menu, orders, todayRevenue) {
+function renderOrders(menu, orders, completedOrders, todayRevenue) {
   var today = new Date();
   document.getElementById("dateLabel").textContent = today.toLocaleDateString("zh-TW", { month: "long", day: "numeric", weekday: "long" });
+  
+  // 1. 渲染上方統計卡片
   var summaryEl = document.getElementById("summary");
   summaryEl.innerHTML = "";
   
@@ -253,6 +291,9 @@ function renderOrders(menu, orders, todayRevenue) {
     summaryEl.appendChild(stat);
   });
 
+  var timeStr = "更新時間 " + new Date().toLocaleTimeString("zh-TW");
+
+  // 2. 渲染待處理訂單列表
   var body = document.getElementById("orderBody");
   body.innerHTML = "";
   if (orders.length === 0) {
@@ -262,9 +303,7 @@ function renderOrders(menu, orders, todayRevenue) {
     document.getElementById("orderTable").style.display = "table";
     document.getElementById("emptyMsg").style.display = "none";
     orders.forEach(function(o) {
-      
-      // 💡 根據 dine_option 動態決定標籤顏色
-      var tagClass = "takeout"; // 預設
+      var tagClass = "takeout"; 
       if (o.dine_option === "內用") tagClass = "dinein";
       else if (o.dine_option === "Uber Eats") tagClass = "ubereats";
       
@@ -298,7 +337,35 @@ function renderOrders(menu, orders, todayRevenue) {
       });
     });
   }
-  document.getElementById("updatedAt").textContent = "更新時間 " + new Date().toLocaleTimeString("zh-TW");
+  document.getElementById("updatedAt").textContent = timeStr;
+
+  // 3. 💡 渲染已完成訂單明細
+  var completedBody = document.getElementById("completedBody");
+  completedBody.innerHTML = "";
+  if (completedOrders.length === 0) {
+    document.getElementById("completedTable").style.display = "none";
+    document.getElementById("completedEmptyMsg").style.display = "block";
+  } else {
+    document.getElementById("completedTable").style.display = "table";
+    document.getElementById("completedEmptyMsg").style.display = "none";
+    completedOrders.forEach(function(o) {
+      var tagClass = "takeout"; 
+      if (o.dine_option === "內用") tagClass = "dinein";
+      else if (o.dine_option === "Uber Eats") tagClass = "ubereats";
+      
+      var sourceClass = o.source === "現場" ? "counter" : "line";
+      var sourceLabel = o.source === "現場" ? "現場" : "LINE";
+      var phoneHtml = o.phone ? "<br><span style='font-size:12px;color:#777'>" + o.phone + "</span>" : "";
+      var tr = document.createElement("tr");
+      tr.innerHTML = "<td>" + o.pickup_time + "</td>" +
+        "<td><span class='tag " + sourceClass + "'>" + sourceLabel + "</span></td>" +
+        "<td>" + (o.customer_name || "-") + phoneHtml + "</td><td>" + o.flavor_name + "</td><td>" + o.qty +
+        "</td><td><span class='tag " + tagClass + "'>" + o.dine_option + "</span></td><td>$" + o.total_price + "</td>" +
+        "<td><span style='color:#999; font-size:13px; font-weight:600;'>已完成</span></td>";
+      completedBody.appendChild(tr);
+    });
+  }
+  document.getElementById("completedUpdatedAt").textContent = timeStr;
 }
 
 var counterCart = {};
@@ -315,7 +382,6 @@ function renderCounterFlavors() {
     
     var badgeHtml = soldOut ? '<span class="badge out">已售完</span>' : '';
     
-    // 💡 選單中加上 UE 的定價顯示
     var html = '<div class="flavor-row"><span class="flavor-name">' + f.name + '</span>' + badgeHtml + '</div>';
     html += '<div class="flavor-price">內用 $' + f.price_dinein + ' / 外帶 $' + f.price_takeout + ' / UE $124</div>';
     
@@ -396,7 +462,6 @@ function updateCounterTotal() {
   for (var id in counterCart) {
     var f = latestMenu.find(function(x) { return x.flavor_id === id; });
     if (f) {
-      // 💡 點餐時即時算出包含 Uber Eats 的價格
       var price = 0;
       if (counterDineOption === "內用") {
         price = f.price_dinein;
