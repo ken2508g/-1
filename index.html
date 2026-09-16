@@ -50,14 +50,13 @@
   <label class="field-label">取餐時間</label>
   <select id="pickupTime"></select>
 
-  <label class="field-label">姓名或是Line名字(方便取餐時核對)</label>
+  <label class="field-label">姓名(方便取餐時核對)</label>
   <input type="text" id="customerName" placeholder="請輸入姓名">
   
   <label class="field-label">聯絡電話(必填)</label>
   <input type="tel" id="customerPhone" placeholder="請輸入手機號碼">
   
-  <!-- 💡 新增備註欄位 -->
-  <label class="field-label">備註(選填，例如：加辣、自備餐盒)</label>
+  <label class="field-label">備註(選填，例如：自備餐盒)</label>
   <input type="text" id="orderRemark" placeholder="如有特殊需求請填寫">
 
   <div id="totalRow">
@@ -71,11 +70,12 @@
   <div id="confirmCard">
     <p class="sub" style="margin:0 0 6px">預約成功</p>
     <p id="confirmDetail" style="font-size:15px;font-weight:600;margin:0"></p>
+    <p style="font-size:13px; color:#777; margin-top:8px;">(請關閉此網頁回到 LINE 聊天室)</p>
   </div>
 
 <script>
 // ===== 請修改以下兩個設定 =====
-var LIFF_ID = "請填入你的LIFF ID";
+var LIFF_ID = "2011627242-1kOYIDUK";
 var API_URL = "https://script.google.com/macros/s/AKfycbz0iwuiklK29eAVtoqNAQKdIjFv3CZpkunf_oJT8HgOxneSl_ra5Reqdiyr3jhfsJXv/exec";
 // ================================
 
@@ -147,7 +147,7 @@ function renderPickupOptions() {
 
   if (dayOfWeek === 3 || dayOfWeek === 4) {
     times = [
-      "11:30","11:45","12:00","12:15","12:30","12:45","13:00","13:15","13:30",
+       "11:30","11:45","12:00","12:15","12:30","12:45","13:00","13:15","13:30",
       "--- 晚餐時段 ---",
       "17:00","17:30","17:45","18:00","18:15","18:30","18:45"
     ];
@@ -206,7 +206,8 @@ document.getElementById("submitBtn").addEventListener("click", function() {
   errEl.style.display = "none";
   var name = document.getElementById("customerName").value.trim();
   var phone = document.getElementById("customerPhone").value.trim();
-  var remark = document.getElementById("orderRemark").value.trim(); // 💡 抓取備註
+  var remark = document.getElementById("orderRemark").value.trim();
+  var pickupTime = document.getElementById("pickupTime").value;
   
   var cartItems = [];
   for (var id in cart) {
@@ -218,42 +219,83 @@ document.getElementById("submitBtn").addEventListener("click", function() {
   if (!phone) { errEl.textContent = "請輸入聯絡電話"; errEl.style.display = "block"; return; }
 
   document.getElementById("submitBtn").disabled = true;
+  document.getElementById("submitBtn").textContent = "處理中...";
 
   fetch(API_URL, {
     method: "POST",
     body: JSON.stringify({
       items: cartItems,
       dine_option: dineOption,
-      pickup_time: document.getElementById("pickupTime").value,
+      pickup_time: pickupTime,
       customer_name: name,
       phone: phone,
-      remark: remark, // 💡 傳送備註
+      remark: remark, 
       line_user_id: userProfile.userId || ""
     })
   })
     .then(function(res) { return res.json(); })
     .then(function(result) {
-      document.getElementById("submitBtn").disabled = false;
       if (!result.success) {
+        document.getElementById("submitBtn").disabled = false;
+        document.getElementById("submitBtn").textContent = "送出預約";
         errEl.textContent = result.message || "送出失敗,請再試一次";
         errEl.style.display = "block";
         loadMenu();
         return;
       }
-      var confirmCard = document.getElementById("confirmCard");
-      var summaryText = "共 " + cartItems.length + " 項餐點(" + dineOption + "), 取餐時間 " + document.getElementById("pickupTime").value + "，總計 $" + result.total_price;
-      document.getElementById("confirmDetail").textContent = summaryText;
-      confirmCard.style.display = "block";
-      
-      cart = {};
-      loadMenu();
+
+      // 💡 整理要發送到 LINE 的文字訊息
+      var orderSummary = "🛒 【Telar Studio 預約明細】\n\n";
+      orderSummary += "👤 姓名：" + name + "\n";
+      orderSummary += "📞 電話：" + phone + "\n";
+      orderSummary += "🛍️ 方式：" + dineOption + "\n";
+      orderSummary += "⏰ 取餐：" + pickupTime + "\n";
+      if (remark) {
+        orderSummary += "📝 備註：" + remark + "\n";
+      }
+      orderSummary += "----------------------\n";
+      for (var id in cart) {
+        var f = menu.find(function(x) { return x.flavor_id === id; });
+        if (f) {
+          orderSummary += f.name + " × " + cart[id] + "\n";
+        }
+      }
+      orderSummary += "----------------------\n";
+      orderSummary += "💰 總計：$" + result.total_price;
+
+      // 💡 呼叫 LIFF API 發送訊息，並自動關閉視窗
+      if (liff.isInClient()) {
+        liff.sendMessages([{
+          type: 'text',
+          text: orderSummary
+        }]).then(function() {
+          liff.closeWindow(); // 發送成功後自動關閉網頁
+        }).catch(function(err) {
+          console.error("訊息發送失敗", err);
+          showSuccessCard(cartItems, result.total_price, pickupTime);
+        });
+      } else {
+        // 如果客人不是用 LINE App 開啟（用一般瀏覽器），就只顯示成功畫面
+        showSuccessCard(cartItems, result.total_price, pickupTime);
+      }
     })
     .catch(function() {
       document.getElementById("submitBtn").disabled = false;
+      document.getElementById("submitBtn").textContent = "送出預約";
       errEl.textContent = "網路連線失敗,請再試一次";
       errEl.style.display = "block";
     });
 });
+
+function showSuccessCard(cartItems, totalPrice, pickupTime) {
+  var confirmCard = document.getElementById("confirmCard");
+  var summaryText = "共 " + cartItems.length + " 項餐點(" + dineOption + "), 取餐時間 " + pickupTime + "，總計 $" + totalPrice;
+  document.getElementById("confirmDetail").textContent = summaryText;
+  confirmCard.style.display = "block";
+  document.getElementById("submitBtn").style.display = "none";
+  cart = {};
+  loadMenu();
+}
 
 renderPickupOptions();
 
