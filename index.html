@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Telar Studio預約點餐系統</title>
+<title>今日點餐</title>
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <style>
   body { font-family: -apple-system, sans-serif; max-width: 420px; margin: 0 auto; padding: 16px; background: #F7F6F2; color: #222; }
@@ -37,7 +37,7 @@
 </head>
 <body>
   <h1>今日餐點</h1>
-  <p class="sub">每日限量供應，請準時取餐</p>
+  <p class="sub">每份限量供應，取餐前請準時取餐</p>
 
   <div id="flavors"></div>
 
@@ -57,7 +57,7 @@
   <input type="tel" id="customerPhone" placeholder="請輸入手機號碼">
   
   <!-- 💡 新增備註欄位 -->
-  <label class="field-label">備註(選填，例如：加辣、自備餐盒)</label>
+  <label class="field-label">備註(選填，例如：加辣、自備餐具)</label>
   <input type="text" id="orderRemark" placeholder="如有特殊需求請填寫">
 
   <div id="totalRow">
@@ -75,6 +75,7 @@
 
 <script>
 // ===== 請修改以下兩個設定 =====
+var LIFF_ID = "請填入你的LIFF ID";
 var API_URL = "https://script.google.com/macros/s/AKfycbz0iwuiklK29eAVtoqNAQKdIjFv3CZpkunf_oJT8HgOxneSl_ra5Reqdiyr3jhfsJXv/exec";
 // ================================
 
@@ -146,12 +147,12 @@ function renderPickupOptions() {
 
   if (dayOfWeek === 3 || dayOfWeek === 4) {
     times = [
-      "11:30","11:45","12:00","12:15","12:30","12:45","13:00","13:30","13:45"
+      "11:30","11:45","12:00","12:15","12:30","12:45","13:00",
       "--- 晚餐時段 ---",
-      "17:00","17:30","17:45","18:00","18:15","18:30","18:45"
+      "17:30","17:45","18:00","18:15","18:30"
     ];
   } else {
-    times = ["11:30","11:45","12:00","12:15","12:30","12:45","13:00","13:30","13:45"];
+    times = ["11:30","11:45","12:00","12:15","12:30","12:45","13:00"];
   }
 
   times.forEach(function(t) {
