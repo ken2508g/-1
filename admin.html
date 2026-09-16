@@ -22,11 +22,15 @@
   table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; }
   th, td { text-align: left; padding: 12px 14px; font-size: 15px; border-bottom: 1px solid #eee; }
   th { color: #777; font-size: 13px; font-weight: 500; background: #fafafa; }
+  
+  /* 💡 標籤樣式：加入 Uber Eats 的專屬綠色 */
   .tag { font-size: 12px; padding: 2px 8px; border-radius: 6px; background: #eee; }
   .tag.dinein { background: #FAECE7; color: #993C1D; }
   .tag.takeout { background: #E1F5EE; color: #0F6E56; }
+  .tag.ubereats { background: #E6F5EC; color: #06C167; }
   .tag.line { background: #E1F0FF; color: #0B5FBF; }
   .tag.counter { background: #FFF3D6; color: #8A6100; }
+  
   #emptyMsg { text-align: center; color: #999; padding: 40px 0; }
   #updatedAt { font-size: 12px; color: #999; margin-top: 14px; }
   .complete-btn { background: #0F6E56; color: #fff; border: none; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
@@ -46,9 +50,12 @@
   .cart-qty { font-size: 16px; font-weight: 600; min-width: 24px; text-align: center; }
   label.field-label { font-size: 13px; color: #777; display: block; margin: 18px 0 6px; }
   select, input { width: 100%; height: 44px; border-radius: 8px; border: 1px solid #ccc; padding: 0 10px; font-size: 16px; box-sizing: border-box; }
-  .dine-options { display: flex; gap: 10px; }
-  .dine-option { flex: 1; text-align: center; padding: 12px; border-radius: 8px; border: 1px solid #ccc; background: #fff; cursor: pointer; font-size: 15px; }
+  
+  /* 💡 調整選項欄位，讓三個選項能平均分配 */
+  .dine-options { display: flex; gap: 8px; }
+  .dine-option { flex: 1; text-align: center; padding: 12px 4px; border-radius: 8px; border: 1px solid #ccc; background: #fff; cursor: pointer; font-size: 14px; }
   .dine-option.selected { border: 2px solid #D85A30; font-weight: 600; }
+  
   #counterTotalRow { display: flex; justify-content: space-between; align-items: baseline; margin-top: 18px; }
   #counterTotalRow span:first-child { font-size: 13px; color: #777; }
   #counterTotalRow span:last-child { font-size: 24px; font-weight: 600; color: #D85A30; }
@@ -85,7 +92,7 @@
     <div id="summary"></div>
     <table id="orderTable">
       <thead>
-        <tr><th>時間</th><th>來源</th><th>姓名 / 電話</th><th>口味</th><th>數量</th><th>內用/外帶</th><th>金額</th><th>操作</th></tr>
+        <tr><th>時間</th><th>來源</th><th>姓名 / 電話</th><th>口味</th><th>數量</th><th>內用/外帶/UE</th><th>金額</th><th>操作</th></tr>
       </thead>
       <tbody id="orderBody"></tbody>
     </table>
@@ -95,15 +102,16 @@
 
   <div id="counterView" style="display:none">
     <div id="counterFlavors"></div>
-    <label class="field-label">內用或外帶</label>
+    <label class="field-label">用餐方式</label>
     <div class="dine-options">
       <div class="dine-option selected" data-value="內用">內用</div>
       <div class="dine-option" data-value="外帶">外帶</div>
+      <div class="dine-option" data-value="Uber Eats">Uber Eats</div>
     </div>
     <label class="field-label">取餐時間</label>
     <select id="counterPickupTime"></select>
-    <label class="field-label">姓名或桌號(選填)</label>
-    <input type="text" id="counterCustomerName" placeholder="例如:王先生 / 3號桌">
+    <label class="field-label">外送單號或桌號(選填)</label>
+    <input type="text" id="counterCustomerName" placeholder="例如:3號桌 / UE 888">
     
     <label class="field-label">聯絡電話(選填)</label>
     <input type="tel" id="counterCustomerPhone" placeholder="例如:0912345678">
@@ -120,7 +128,7 @@
 
 <script>
 // ===== 請修改以下設定 =====
-var API_URL = "https://script.google.com/macros/s/AKfycbwCmQV2khwEi73IToyiX6EhkJ9Hfp4qpxwr_1rEavPHOjMZVcGy1DVhc2IMIycLfjTi/exec";
+var API_URL = "https://script.google.com/macros/s/AKfycbzsuIldKtpwOGLxnK1Pw7onQTa8_QA7I8hCquVrxkwg8yRw97ZjNVkIJCAyvIAJj13x/exec";
 var REFRESH_SECONDS = 15;
 // ============================
 
@@ -189,7 +197,6 @@ function fetchData(isFirstLoad) {
       isSystemActive = true;
       latestMenu = data.menu || [];
       checkNewOrders(data.orders || []);
-      // 💡 將 today_revenue 傳入渲染函數中
       renderOrders(latestMenu, data.orders || [], data.today_revenue || 0);
       renderCounterFlavors();
     })
@@ -234,7 +241,6 @@ function renderOrders(menu, orders, todayRevenue) {
   pendingRevStat.innerHTML = '<p class="stat-label">待處理金額</p><p class="stat-value">$' + pendingRevenue + '</p>';
   summaryEl.appendChild(pendingRevStat);
 
-  // 💡 新增：今日總營業額顯示
   var totalRevStat = document.createElement("div");
   totalRevStat.className = "stat";
   totalRevStat.innerHTML = '<p class="stat-label">今日總營業額</p><p class="stat-value" style="color:#D85A30">$' + todayRevenue + '</p>';
@@ -256,7 +262,12 @@ function renderOrders(menu, orders, todayRevenue) {
     document.getElementById("orderTable").style.display = "table";
     document.getElementById("emptyMsg").style.display = "none";
     orders.forEach(function(o) {
-      var tagClass = o.dine_option === "內用" ? "dinein" : "takeout";
+      
+      // 💡 根據 dine_option 動態決定標籤顏色
+      var tagClass = "takeout"; // 預設
+      if (o.dine_option === "內用") tagClass = "dinein";
+      else if (o.dine_option === "Uber Eats") tagClass = "ubereats";
+      
       var sourceClass = o.source === "現場" ? "counter" : "line";
       var sourceLabel = o.source === "現場" ? "現場" : "LINE";
       var phoneHtml = o.phone ? "<br><span style='font-size:12px;color:#777'>" + o.phone + "</span>" : "";
@@ -304,8 +315,9 @@ function renderCounterFlavors() {
     
     var badgeHtml = soldOut ? '<span class="badge out">已售完</span>' : '';
     
+    // 💡 選單中加上 UE 的定價顯示
     var html = '<div class="flavor-row"><span class="flavor-name">' + f.name + '</span>' + badgeHtml + '</div>';
-    html += '<div class="flavor-price">內用 $' + f.price_dinein + ' / 外帶 $' + f.price_takeout + '</div>';
+    html += '<div class="flavor-price">內用 $' + f.price_dinein + ' / 外帶 $' + f.price_takeout + ' / UE $124</div>';
     
     if (!soldOut) {
       html += '<div class="cart-controls">';
@@ -384,7 +396,15 @@ function updateCounterTotal() {
   for (var id in counterCart) {
     var f = latestMenu.find(function(x) { return x.flavor_id === id; });
     if (f) {
-      var price = (counterDineOption === "內用") ? f.price_dinein : f.price_takeout;
+      // 💡 點餐時即時算出包含 Uber Eats 的價格
+      var price = 0;
+      if (counterDineOption === "內用") {
+        price = f.price_dinein;
+      } else if (counterDineOption === "外帶") {
+        price = f.price_takeout;
+      } else if (counterDineOption === "Uber Eats") {
+        price = 124;
+      }
       total += price * counterCart[id];
     }
   }
