@@ -201,6 +201,17 @@ document.querySelectorAll(".dine-option").forEach(function(el) {
   });
 });
 
+// 如果客人不是用 LINE App 開啟，顯示完成畫面的函數
+function showSuccessCard(cartItems, totalPrice, pickupTime) {
+  var confirmCard = document.getElementById("confirmCard");
+  var summaryText = "共 " + cartItems.length + " 項餐點(" + dineOption + "), 取餐時間 " + pickupTime + "，總計 $" + totalPrice;
+  document.getElementById("confirmDetail").textContent = summaryText;
+  confirmCard.style.display = "block";
+  document.getElementById("submitBtn").style.display = "none";
+  cart = {};
+  loadMenu();
+}
+
 document.getElementById("submitBtn").addEventListener("click", function() {
   var errEl = document.getElementById("errorMsg");
   errEl.style.display = "none";
@@ -244,38 +255,10 @@ document.getElementById("submitBtn").addEventListener("click", function() {
         return;
       }
 
-      // 💡 整理要發送到 LINE 的文字訊息
-      var orderSummary = "🛒 【Telar Studio 預約明細】\n\n";
-      orderSummary += "👤 姓名：" + name + "\n";
-      orderSummary += "📞 電話：" + phone + "\n";
-      orderSummary += "🛍️ 方式：" + dineOption + "\n";
-      orderSummary += "⏰ 取餐：" + pickupTime + "\n";
-      if (remark) {
-        orderSummary += "📝 備註：" + remark + "\n";
-      }
-      orderSummary += "----------------------\n";
-      for (var id in cart) {
-        var f = menu.find(function(x) { return x.flavor_id === id; });
-        if (f) {
-          orderSummary += f.name + " × " + cart[id] + "\n";
-        }
-      }
-      orderSummary += "----------------------\n";
-      orderSummary += "💰 總計：$" + result.total_price;
-
-      // 💡 呼叫 LIFF API 發送訊息，並自動關閉視窗
+      // 💡 結帳成功後：如果在 LINE 裡面就關閉網頁等待推播，如果是在瀏覽器就顯示成功卡片
       if (liff.isInClient()) {
-        liff.sendMessages([{
-          type: 'text',
-          text: orderSummary
-        }]).then(function() {
-          liff.closeWindow(); // 發送成功後自動關閉網頁
-        }).catch(function(err) {
-          console.error("訊息發送失敗", err);
-          showSuccessCard(cartItems, result.total_price, pickupTime);
-        });
+        liff.closeWindow();
       } else {
-        // 如果客人不是用 LINE App 開啟（用一般瀏覽器），就只顯示成功畫面
         showSuccessCard(cartItems, result.total_price, pickupTime);
       }
     })
@@ -286,16 +269,6 @@ document.getElementById("submitBtn").addEventListener("click", function() {
       errEl.style.display = "block";
     });
 });
-
-function showSuccessCard(cartItems, totalPrice, pickupTime) {
-  var confirmCard = document.getElementById("confirmCard");
-  var summaryText = "共 " + cartItems.length + " 項餐點(" + dineOption + "), 取餐時間 " + pickupTime + "，總計 $" + totalPrice;
-  document.getElementById("confirmDetail").textContent = summaryText;
-  confirmCard.style.display = "block";
-  document.getElementById("submitBtn").style.display = "none";
-  cart = {};
-  loadMenu();
-}
 
 renderPickupOptions();
 
