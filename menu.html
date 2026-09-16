@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>本週菜單 - Telar Studio</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; max-width: 420px; margin: 0 auto; padding: 20px; background: #F7F6F2; color: #222; }
+    h1 { font-size: 20px; font-weight: 600; margin: 0 0 6px; text-align: center; }
+    p.sub { font-size: 14px; color: #777; margin: 0 0 24px; text-align: center; }
+    .flavor { border-radius: 12px; padding: 18px; margin-bottom: 14px; background: #fff; border: 1px solid #ddd; }
+    .flavor.soldout { opacity: 0.5; }
+    .flavor-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .flavor-name { font-size: 17px; font-weight: 600; color: #222; }
+    .badge { font-size: 12px; padding: 4px 10px; border-radius: 6px; }
+    .badge.out { background: #eee; color: #999; }
+    .badge.avail { background: #E1F5EE; color: #0F6E56; font-weight: 600;}
+    .flavor-price { font-size: 14px; color: #555; }
+    .price-tag { display: inline-block; background: #F7F6F2; padding: 6px 10px; border-radius: 6px; margin-right: 8px; margin-top: 4px;}
+    #loading { text-align: center; color: #999; margin-top: 40px; font-size: 15px; }
+  </style>
+</head>
+<body>
+  <h1>本週菜單</h1>
+  <p class="sub">每份餐點皆為用心製作，限量供應</p>
+  
+  <div id="loading">菜單讀取中...</div>
+  <div id="flavors"></div>
+
+  <script>
+    // ===== ⚠️ 請填入你原本的 Apps Script 部署網址 =====
+    var API_URL = "https://script.google.com/macros/s/AKfycbxLUGCQAjO9NvT-pr5htgB1P3Cd73fgKS0aFj4N3LQjdGhdbVY1C_GH8L3Gu76vE2mI/exec";
+    // ===============================================
+
+    fetch(API_URL)
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        document.getElementById("loading").style.display = "none";
+        var wrap = document.getElementById("flavors");
+        var menu = data.menu || [];
+        
+        if (menu.length === 0) {
+          wrap.innerHTML = "<p style='text-align:center; color:#999;'>今日尚未更新菜單</p>";
+          return;
+        }
+
+        menu.forEach(function(f) {
+          var soldOut = f.remaining <= 0;
+          var div = document.createElement("div");
+          div.className = "flavor" + (soldOut ? " soldout" : "");
+          
+          var statusBadge = soldOut 
+            ? '<span class="badge out">已售完</span>' 
+            : '<span class="badge avail">供應中</span>';
+          
+          var html = '<div class="flavor-row"><span class="flavor-name">' + f.name + '</span>' + statusBadge + '</div>';
+          html += '<div class="flavor-price">';
+          html += '<span class="price-tag">內用 $' + f.price_dinein + '</span>';
+          html += '<span class="price-tag">外帶 $' + f.price_takeout + '</span>';
+          html += '</div>';
+          
+          div.innerHTML = html;
+          wrap.appendChild(div);
+        });
+      })
+      .catch(function() {
+        document.getElementById("loading").textContent = "菜單載入失敗，請稍後再試";
+      });
+  </script>
+</body>
+</html>
