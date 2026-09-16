@@ -87,14 +87,13 @@
     <button class="tab-btn" id="tabCounter">櫃檯點餐</button>
   </div>
 
-  <!-- 總結卡片 (固定顯示在列表上方) -->
   <div id="summary" style="display:none;"></div>
 
-  <!-- 待處理視窗 -->
+  <!-- 待處理視窗 (增加備註標題) -->
   <div id="ordersView">
     <table id="orderTable">
       <thead>
-        <tr><th>時間</th><th>來源</th><th>姓名 / 電話</th><th>口味</th><th>數量</th><th>內用/外帶/UE</th><th>金額</th><th>操作</th></tr>
+        <tr><th>時間</th><th>來源</th><th>姓名 / 電話</th><th>口味</th><th>數量</th><th>內用/外帶/UE</th><th>金額</th><th>備註</th><th>操作</th></tr>
       </thead>
       <tbody id="orderBody"></tbody>
     </table>
@@ -102,11 +101,11 @@
     <p id="updatedAt" class="updatedAt"></p>
   </div>
 
-  <!-- 已完成視窗 -->
+  <!-- 已完成視窗 (增加備註標題) -->
   <div id="completedView" style="display:none">
     <table id="completedTable">
       <thead>
-        <tr><th>時間</th><th>來源</th><th>姓名 / 電話</th><th>口味</th><th>數量</th><th>內用/外帶/UE</th><th>金額</th><th>狀態</th></tr>
+        <tr><th>時間</th><th>來源</th><th>姓名 / 電話</th><th>口味</th><th>數量</th><th>內用/外帶/UE</th><th>金額</th><th>備註</th><th>狀態</th></tr>
       </thead>
       <tbody id="completedBody"></tbody>
     </table>
@@ -131,6 +130,10 @@
     <label class="field-label">聯絡電話(選填)</label>
     <input type="tel" id="counterCustomerPhone" placeholder="例如:0912345678">
 
+    <!-- 💡 櫃檯也支援備註輸入 -->
+    <label class="field-label">備註(選填)</label>
+    <input type="text" id="counterRemark" placeholder="例如:加辣、自備餐具">
+
     <div id="counterTotalRow">
       <span>總金額</span>
       <span id="counterTotalPrice">$0</span>
@@ -143,7 +146,7 @@
 
 <script>
 // ===== 請修改以下設定 =====
-var API_URL = "https://script.google.com/macros/s/AKfycbyVt17gfyiGvxbRjDnxEtS_i_aDLyTfF6fAsM7DTB_b5LlyIRWOPYq7VML8HqbtDwZ4/exec";
+var API_URL = "https://script.google.com/macros/s/AKfycbz0iwuiklK29eAVtoqNAQKdIjFv3CZpkunf_oJT8HgOxneSl_ra5Reqdiyr3jhfsJXv/exec";
 var REFRESH_SECONDS = 15;
 // ============================
 
@@ -183,7 +186,6 @@ document.getElementById("soundToggle").addEventListener("click", function() {
   if (soundEnabled) unlockAudio();
 });
 
-// 切換 Tab 功能
 document.getElementById("tabOrders").addEventListener("click", function() {
   document.querySelectorAll(".tab-btn").forEach(function(b){ b.classList.remove("active"); });
   this.classList.add("active");
@@ -195,7 +197,7 @@ document.getElementById("tabOrders").addEventListener("click", function() {
 document.getElementById("tabCompleted").addEventListener("click", function() {
   document.querySelectorAll(".tab-btn").forEach(function(b){ b.classList.remove("active"); });
   this.classList.add("active");
-  document.getElementById("summary").style.display = "none"; // 已完成明細畫面不顯示統計卡片，畫面更乾淨
+  document.getElementById("summary").style.display = "none"; 
   document.getElementById("ordersView").style.display = "none";
   document.getElementById("completedView").style.display = "block";
   document.getElementById("counterView").style.display = "none";
@@ -223,7 +225,6 @@ function fetchData(isFirstLoad) {
       document.getElementById("loginBox").style.display = "none";
       document.getElementById("dashboard").style.display = "block";
       
-      // 首次載入時顯示統計卡片
       if (document.getElementById("tabOrders").classList.contains("active")) {
         document.getElementById("summary").style.display = "flex";
       }
@@ -232,7 +233,6 @@ function fetchData(isFirstLoad) {
       latestMenu = data.menu || [];
       checkNewOrders(data.orders || []);
       
-      // 💡 傳入 pending 和 completed 兩組訂單
       renderOrders(latestMenu, data.orders || [], data.completed_orders || [], data.today_revenue || 0);
       renderCounterFlavors();
     })
@@ -262,7 +262,6 @@ function renderOrders(menu, orders, completedOrders, todayRevenue) {
   var today = new Date();
   document.getElementById("dateLabel").textContent = today.toLocaleDateString("zh-TW", { month: "long", day: "numeric", weekday: "long" });
   
-  // 1. 渲染上方統計卡片
   var summaryEl = document.getElementById("summary");
   summaryEl.innerHTML = "";
   
@@ -293,7 +292,7 @@ function renderOrders(menu, orders, completedOrders, todayRevenue) {
 
   var timeStr = "更新時間 " + new Date().toLocaleTimeString("zh-TW");
 
-  // 2. 渲染待處理訂單列表
+  // 渲染待處理訂單列表
   var body = document.getElementById("orderBody");
   body.innerHTML = "";
   if (orders.length === 0) {
@@ -310,11 +309,16 @@ function renderOrders(menu, orders, completedOrders, todayRevenue) {
       var sourceClass = o.source === "現場" ? "counter" : "line";
       var sourceLabel = o.source === "現場" ? "現場" : "LINE";
       var phoneHtml = o.phone ? "<br><span style='font-size:12px;color:#777'>" + o.phone + "</span>" : "";
+      
+      // 💡 渲染備註欄，若有備註則用顯眼橘紅色標示
+      var remarkHtml = o.remark ? "<span style='color:#D85A30; font-weight:600; font-size:13px;'>" + o.remark + "</span>" : "-";
+
       var tr = document.createElement("tr");
       tr.innerHTML = "<td>" + o.pickup_time + "</td>" +
         "<td><span class='tag " + sourceClass + "'>" + sourceLabel + "</span></td>" +
         "<td>" + (o.customer_name || "-") + phoneHtml + "</td><td>" + o.flavor_name + "</td><td>" + o.qty +
         "</td><td><span class='tag " + tagClass + "'>" + o.dine_option + "</span></td><td>$" + o.total_price + "</td>" +
+        "<td>" + remarkHtml + "</td>" +
         "<td><button class='complete-btn' data-id='" + o.order_id + "'>完成</button></td>";
       body.appendChild(tr);
     });
@@ -339,7 +343,7 @@ function renderOrders(menu, orders, completedOrders, todayRevenue) {
   }
   document.getElementById("updatedAt").textContent = timeStr;
 
-  // 3. 💡 渲染已完成訂單明細
+  // 渲染已完成訂單明細
   var completedBody = document.getElementById("completedBody");
   completedBody.innerHTML = "";
   if (completedOrders.length === 0) {
@@ -356,11 +360,16 @@ function renderOrders(menu, orders, completedOrders, todayRevenue) {
       var sourceClass = o.source === "現場" ? "counter" : "line";
       var sourceLabel = o.source === "現場" ? "現場" : "LINE";
       var phoneHtml = o.phone ? "<br><span style='font-size:12px;color:#777'>" + o.phone + "</span>" : "";
+      
+      // 💡 渲染備註欄
+      var remarkHtml = o.remark ? "<span style='color:#D85A30; font-weight:600; font-size:13px;'>" + o.remark + "</span>" : "-";
+
       var tr = document.createElement("tr");
       tr.innerHTML = "<td>" + o.pickup_time + "</td>" +
         "<td><span class='tag " + sourceClass + "'>" + sourceLabel + "</span></td>" +
         "<td>" + (o.customer_name || "-") + phoneHtml + "</td><td>" + o.flavor_name + "</td><td>" + o.qty +
         "</td><td><span class='tag " + tagClass + "'>" + o.dine_option + "</span></td><td>$" + o.total_price + "</td>" +
+        "<td>" + remarkHtml + "</td>" +
         "<td><span style='color:#999; font-size:13px; font-weight:600;'>已完成</span></td>";
       completedBody.appendChild(tr);
     });
@@ -436,14 +445,14 @@ function renderCounterPickupOptions() {
   var dayOfWeek = new Date().getDay(); 
   var times = [];
 
-  if (dayOfWeek === 3 || dayOfWeek === 4) {
+ if (dayOfWeek === 3 || dayOfWeek === 4) {
     times = [
-      "11:30","11:45","12:00","12:15","12:30","12:45","13:00",
+      "11:30","11:45","12:00","12:15","12:30","12:45","13:00","13:30","13:45"
       "--- 晚餐時段 ---",
-      "17:30","17:45","18:00","18:15","18:30"
+      "17:00","17:30","17:45","18:00","18:15","18:30","18:45"
     ];
   } else {
-    times = ["11:30","11:45","12:00","12:15","12:30","12:45","13:00"];
+    times = ["11:30","11:45","12:00","12:15","12:30","12:45","13:00","13:30","13:45"];
   }
 
   times.forEach(function(t) {
@@ -500,6 +509,7 @@ document.getElementById("counterSubmitBtn").addEventListener("click", function()
 
   var name = document.getElementById("counterCustomerName").value.trim() || "現場客人";
   var phone = document.getElementById("counterCustomerPhone").value.trim() || "";
+  var remark = document.getElementById("counterRemark").value.trim() || ""; // 💡 抓取櫃檯備註
   document.getElementById("counterSubmitBtn").disabled = true;
 
   fetch(API_URL, {
@@ -509,7 +519,8 @@ document.getElementById("counterSubmitBtn").addEventListener("click", function()
       dine_option: counterDineOption,
       pickup_time: document.getElementById("counterPickupTime").value,
       customer_name: name,
-      phone: phone, 
+      phone: phone,
+      remark: remark, // 💡 傳送櫃檯備註
       source: "現場"
     })
   })
@@ -526,6 +537,7 @@ document.getElementById("counterSubmitBtn").addEventListener("click", function()
       counterCart = {};
       document.getElementById("counterCustomerName").value = "";
       document.getElementById("counterCustomerPhone").value = "";
+      document.getElementById("counterRemark").value = ""; // 💡 清空備註
       document.getElementById("counterTotalPrice").textContent = "$0"; 
       fetchData(false);
     })
