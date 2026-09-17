@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Telar 服飾結帳系統</title>
+<style>
+  body { font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #F7F6F2; color: #222; }
+  h1 { font-size: 22px; font-weight: 600; text-align: center; margin-bottom: 20px; }
+  
+  .item { background: #fff; border: 1px solid #ddd; border-radius: 12px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+  .item-info { flex: 1; }
+  .item-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .item-meta { font-size: 13px; color: #777; }
+  .stock-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-weight: 600; background: #E1F5EE; color: #0F6E56; margin-top: 4px; }
+  .stock-badge.low { background: #FAECE7; color: #993C1D; }
+  
+  .cart-controls { display: flex; align-items: center; gap: 10px; }
+  .btn-icon { width: 32px; height: 32px; border-radius: 8px; border: 1px solid #ccc; background: #fff; font-size: 18px; cursor: pointer; }
+  .qty { font-size: 16px; font-weight: 600; min-width: 20px; text-align: center; }
+
+  .checkout-panel { background: #fff; border-radius: 12px; padding: 20px; margin-top: 20px; border: 1px solid #ddd; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
+  .row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 15px; }
+  .discount-btns { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px;}
+  .btn-discount { flex: 1; min-width: 70px; padding: 8px 4px; border-radius: 8px; border: 1px solid #ccc; background: #fff; font-size: 13px; cursor: pointer; white-space: nowrap; text-align: center;}
+  .btn-discount.active { background: #D85A30; color: #fff; border-color: #D85A30; font-weight: 600;}
+  
+  .total-row { border-top: 2px solid #F7F6F2; padding-top: 12px; font-size: 18px; font-weight: 600; color: #D85A30; display: flex; justify-content: space-between; }
+  .btn-submit { width: 100%; height: 50px; border-radius: 10px; background: #222; color: #fff; font-size: 18px; font-weight: 600; border: none; margin-top: 16px; cursor: pointer; }
+  .btn-submit:disabled { background: #ccc; cursor: not-allowed; }
+  #loading { text-align: center; color: #777; margin: 40px 0; }
+</style>
+</head>
+<body>
+
+  <h1>Telar 服飾結帳系統</h1>
+  <div id="loading">讀取庫存中...</div>
+  <div id="inventoryList"></div>
+
+  <div class="checkout-panel">
+    <div class="row">
+      <span style="color:#777">商品總計</span>
+      <span id="origTotal">$0</span>
+    </div>
+    
+    <div style="font-size:13px; color:#777; margin-bottom:8px;">一鍵快速折扣</div>
+    <div class="discount-btns">
+      <div class="btn-discount active" data-type="none" data-val="0">無折扣</div>
+      <div class="btn-discount" data-type="percent" data-val="0.9">9折</div>
+      <div class="btn-discount" data-type="percent" data-val="0.85">85折</div>
+      <div class="btn-discount" data-type="minus" data-val="100">折 $100</div>
+    </div>
+
+    <div class="total-row">
+      <span>結帳總額</span>
+      <span id="finalTotal">$0</span>
+    </div>
+
+    <button class="btn-submit" id="submitBtn">結帳並扣除庫存</button>
+  </div>
+
+<script>
+// ===== ⚠️ 替換成你的 API 網址 =====
+var API_URL = "https://script.google.com/macros/s/AKfycbzztuni9xXSuwRuRAXrlP_N5DmPD2PimIHBG1VkOb3nqBWcGAbV4DEj3T9719Haw9m4ow/exec";
+// ==================================
+
+var inventory = [];
+var cart = {}; // id -> qty
+var discountType = "none";
+var discountVal = 0;
+
+function loadData() {
+  document.getElementById("loading").style.display = "block";
+  document.getElementById("inventoryList").innerHTML = "";
+  fetch(API_URL)
+    .then(res => res.json())
+    .then(data => {
+      inventory = data.inventory || [];
+      document.getElementById("loading").style.display = "none";
+      renderList();
+      calcTotal();
+    });
+}
+
+function renderList() {
+  var wrap = document.getElementById("inventoryList");
+  wrap.innerHTML = "";
+  inventory.forEach(item => {
+    var qty = cart[item.id] || 0;
+    var stockClass = item.stock <= 3 ? "low" : "";
+    var stockText = item.stock <= 0 ? "已售完" : "庫存: " + item.stock;
+    
+    var html = `
+      <div class="item">
+        <div class="item-info">
+          <div class="item-title">${item.name}</div>
+          <div class="item-meta">${item.color} - ${item.size} | $${item.price}</div>
+          <div class="stock-badge ${stockClass}">${stockText}</div>
+        </div>
+        <div class="cart-controls">
+          <button class="btn-icon minus" data-id="${item.id}">−</button>
+          <span class="qty">${qty}</span>
+          <button class="btn-icon plus" data-id="${item.id}" ${item.stock <= 0 ? "disabled" : ""}>+</button>
+        </div>
+      </div>
+    `;
+    wrap.innerHTML += html;
+  });
+
+  document.querySelectorAll('.minus').forEach(btn => {
+    btn.addEventListener('click', function() {
+      var id = this.getAttribute('data-id');
+      if (cart[id] > 0) { cart[id]--; if(cart[id]===0) delete cart[id]; renderList(); calcTotal(); }
+    });
+  });
+
+  document.querySelectorAll('.plus').forEach(btn => {
+    btn.addEventListener('click', function() {
+      var id = this.getAttribute('data-id');
+      var target = inventory.find(x => x.id == id);
+      var current = cart[id] || 0;
+      if (current < target.stock) { cart[id] = current + 1; renderList(); calcTotal(); }
+      else { alert("超過目前庫存數量！"); }
+    });
+  });
+}
+
+document.querySelectorAll('.btn-discount').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.btn-discount').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    discountType = this.getAttribute('data-type');
+    discountVal = parseFloat(this.getAttribute('data-val'));
+    calcTotal();
+  });
+});
+
+function calcTotal() {
+  var orig = 0;
+  for (var id in cart) {
+    var target = inventory.find(x => x.id == id);
+    orig += target.price * cart[id];
+  }
+  
+  var finalAmt = orig;
+  if (discountType === "percent") {
+    finalAmt = Math.round(orig * discountVal);
+  } else if (discountType === "minus") {
+    finalAmt = orig - discountVal;
+    if (finalAmt < 0) finalAmt = 0;
+  }
+  
+  document.getElementById("origTotal").textContent = "$" + orig;
+  document.getElementById("finalTotal").textContent = "$" + finalAmt;
+  return { orig: orig, finalAmt: finalAmt };
+}
+
+document.getElementById("submitBtn").addEventListener("click", function() {
+  var keys = Object.keys(cart);
+  if (keys.length === 0) { alert("購物車是空的！"); return; }
+  
+  var totals = calcTotal();
+  var payloadCart = keys.map(id => {
+    var target = inventory.find(x => x.id == id);
+    return { row: target.row, id: id, name: target.name, color: target.color, size: target.size, qty: cart[id] };
+  });
+
+  var desc = document.querySelector('.btn-discount.active').textContent;
+  
+  this.textContent = "結帳中...";
+  this.disabled = true;
+
+  fetch(API_URL, {
+    method: "POST",
+    body: JSON.stringify({
+      cart: payloadCart,
+      origTotal: totals.orig,
+      discountDesc: desc,
+      finalTotal: totals.finalAmt
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      alert("結帳成功！庫存已自動扣除。");
+      cart = {};
+      document.querySelectorAll('.btn-discount')[0].click(); // 重設折扣
+      loadData(); // 重新讀取最新庫存
+    } else {
+      alert("失敗：" + data.message);
+    }
+    document.getElementById("submitBtn").textContent = "結帳並扣除庫存";
+    document.getElementById("submitBtn").disabled = false;
+  });
+});
+
+loadData();
+</script>
+</body>
+</html>
