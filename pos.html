@@ -8,6 +8,11 @@
   body { font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #F7F6F2; color: #222; }
   h1 { font-size: 22px; font-weight: 600; text-align: center; margin-bottom: 20px; }
   
+  /* 💡 切換分頁樣式 */
+  #tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+  .tab-btn { flex: 1; padding: 12px; border-radius: 10px; border: 1px solid #ccc; background: #fff; font-size: 15px; font-weight: 600; cursor: pointer; color: #555; }
+  .tab-btn.active { background: #222; color: #fff; border-color: #222; }
+
   /* 商品卡片區塊 */
   .item { background: #fff; border: 1px solid #ddd; border-radius: 12px; padding: 16px; margin-bottom: 12px; }
   .item-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #222;}
@@ -31,12 +36,10 @@
   .btn-icon { width: 28px; height: 28px; border-radius: 6px; border: 1px solid #ccc; background: #fff; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;}
   .qty { font-size: 15px; font-weight: 600; min-width: 20px; text-align: center; }
 
-  /* 折扣區域 */
   .discount-btns { display: flex; gap: 8px; margin-bottom: 12px; overflow-x: auto; padding-bottom: 4px;}
   .btn-discount { flex: 1; min-width: 70px; padding: 8px 4px; border-radius: 8px; border: 1px solid #ccc; background: #fff; font-size: 13px; cursor: pointer; white-space: nowrap; text-align: center;}
   .btn-discount.active { background: #222; color: #fff; border-color: #222; font-weight: 600;}
   
-  /* 💡 新增的自訂輸入框樣式 */
   .custom-discount-row { display: flex; align-items: center; margin-bottom: 16px; gap: 10px; }
   .custom-discount-row input { flex: 1; height: 38px; border-radius: 8px; border: 1px solid #ccc; padding: 0 10px; font-size: 14px; }
   
@@ -44,53 +47,82 @@
   .btn-submit { width: 100%; height: 50px; border-radius: 10px; background: #D85A30; color: #fff; font-size: 18px; font-weight: 600; border: none; margin-top: 16px; cursor: pointer; }
   .btn-submit:disabled { background: #ccc; cursor: not-allowed; }
   
+  /* 💡 銷售紀錄表格樣式 */
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.03); border: 1px solid #ddd; }
+  th, td { text-align: left; padding: 14px 12px; font-size: 14px; border-bottom: 1px solid #eee; }
+  th { color: #777; font-size: 13px; font-weight: 600; background: #fafafa; }
+  .sales-items { font-size: 13px; color: #555; line-height: 1.5; }
+  
   #loading { text-align: center; color: #777; margin: 40px 0; }
-  .empty-cart { text-align: center; color: #999; font-size: 13px; margin: 20px 0; }
+  .empty-msg { text-align: center; color: #999; font-size: 14px; padding: 40px 0; display: none; }
 </style>
 </head>
 <body>
 
   <h1>Telar 服飾結帳系統</h1>
-  <div id="loading">讀取庫存中...</div>
   
-  <!-- 商品選單區塊 -->
-  <div id="productList"></div>
+  <!-- 💡 分頁按鈕 -->
+  <div id="tabs">
+    <button class="tab-btn active" id="tabPos">收銀結帳</button>
+    <button class="tab-btn" id="tabSales">銷售紀錄</button>
+  </div>
 
-  <!-- 結帳車區塊 -->
-  <div class="checkout-panel">
-    <h3 class="panel-title">🛒 結帳清單</h3>
-    <div id="cartList"><div class="empty-cart">尚未加入任何商品</div></div>
+  <div id="loading">資料同步中...</div>
+  
+  <!-- ================= 收銀結帳畫面 ================= -->
+  <div id="posView" style="display:none;">
+    <div id="productList"></div>
 
-    <div class="row" style="margin-top: 20px; font-size: 14px;">
-      <span style="color:#777">商品總計</span>
-      <span id="origTotal">$0</span>
-    </div>
-    
-    <div style="font-size:13px; color:#777; margin-bottom:8px;">選擇快速折扣</div>
-    <div class="discount-btns">
-      <div class="btn-discount active" data-type="none" data-val="0">無折扣</div>
-      <div class="btn-discount" data-type="percent" data-val="0.9">9折</div>
-      <div class="btn-discount" data-type="percent" data-val="0.85">85折</div>
-      <div class="btn-discount" data-type="minus" data-val="100">折 $100</div>
-    </div>
-    
-    <!-- 💡 自訂折抵區塊 -->
-    <div class="custom-discount-row">
-      <span style="font-size:14px; color:#555; font-weight:500;">或自訂折抵 $</span>
-      <input type="number" id="customDiscount" placeholder="輸入折抵金額" min="0">
-    </div>
+    <div class="checkout-panel">
+      <h3 class="panel-title">🛒 結帳清單</h3>
+      <div id="cartList"><div class="empty-msg" style="display:block; padding: 10px 0;">尚未加入任何商品</div></div>
 
-    <div class="total-row">
-      <span>結帳總額</span>
-      <span id="finalTotal">$0</span>
-    </div>
+      <div class="row" style="margin-top: 20px; font-size: 14px;">
+        <span style="color:#777">商品總計</span>
+        <span id="origTotal">$0</span>
+      </div>
+      
+      <div style="font-size:13px; color:#777; margin-bottom:8px;">選擇快速折扣</div>
+      <div class="discount-btns">
+        <div class="btn-discount active" data-type="none" data-val="0">無折扣</div>
+        <div class="btn-discount" data-type="percent" data-val="0.9">9折</div>
+        <div class="btn-discount" data-type="percent" data-val="0.85">85折</div>
+        <div class="btn-discount" data-type="minus" data-val="100">折 $100</div>
+      </div>
+      
+      <div class="custom-discount-row">
+        <span style="font-size:14px; color:#555; font-weight:500;">或自訂折抵 $</span>
+        <input type="number" id="customDiscount" placeholder="輸入折抵金額" min="0">
+      </div>
 
-    <button class="btn-submit" id="submitBtn">結帳並扣除庫存</button>
+      <div class="total-row">
+        <span>結帳總額</span>
+        <span id="finalTotal">$0</span>
+      </div>
+
+      <button class="btn-submit" id="submitBtn">結帳並扣除庫存</button>
+    </div>
+  </div>
+
+  <!-- ================= 銷售紀錄畫面 ================= -->
+  <div id="salesView" style="display:none;">
+    <table id="salesTable">
+      <thead>
+        <tr>
+          <th>時間</th>
+          <th>商品明細</th>
+          <th>折扣</th>
+          <th style="text-align:right;">實收</th>
+        </tr>
+      </thead>
+      <tbody id="salesBody"></tbody>
+    </table>
+    <div id="emptySales" class="empty-msg">目前尚無銷售紀錄</div>
   </div>
 
 <script>
 // ===== ⚠️ 替換成你的 API 網址 =====
-var API_URL = "https://script.google.com/macros/s/AKfycbzztuni9xXSuwRuRAXrlP_N5DmPD2PimIHBG1VkOb3nqBWcGAbV4DEj3T9719Haw9m4ow/exec";
+var API_URL = "https://script.google.com/macros/s/AKfycbxH3H2OgrRQxMsDgVhFXlQb8-BbAZW6R-HfivqVQN-1UCMKkpu6L1qJ21ocCulX7jO4Mw/execipt";
 // ==================================
 
 var inventory = [];
@@ -99,20 +131,79 @@ var cart = {};
 var discountType = "none";
 var discountVal = 0;
 
+// 💡 分頁切換邏輯
+document.getElementById("tabPos").addEventListener("click", function() {
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  this.classList.add("active");
+  document.getElementById("posView").style.display = "block";
+  document.getElementById("salesView").style.display = "none";
+});
+
+document.getElementById("tabSales").addEventListener("click", function() {
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  this.classList.add("active");
+  document.getElementById("posView").style.display = "none";
+  document.getElementById("salesView").style.display = "block";
+});
+
 function loadData() {
   document.getElementById("loading").style.display = "block";
-  document.getElementById("productList").innerHTML = "";
+  document.getElementById("posView").style.display = "none";
+  document.getElementById("salesView").style.display = "none";
+  
   fetch(API_URL)
     .then(res => res.json())
     .then(data => {
+      // 處理商品庫存
       inventory = data.inventory || [];
       parseInventory(); 
-      document.getElementById("loading").style.display = "none";
       renderProducts();
       renderCart();
       calcTotal();
+
+      // 💡 處理銷售紀錄
+      renderSales(data.sales || []);
+
+      document.getElementById("loading").style.display = "none";
+      
+      // 預設顯示哪個畫面
+      if (document.getElementById("tabPos").classList.contains("active")) {
+        document.getElementById("posView").style.display = "block";
+      } else {
+        document.getElementById("salesView").style.display = "block";
+      }
     })
     .catch(() => alert("載入失敗，請重新整理"));
+}
+
+// 💡 渲染銷售紀錄表格
+function renderSales(salesList) {
+  var tbody = document.getElementById("salesBody");
+  tbody.innerHTML = "";
+  
+  if (salesList.length === 0) {
+    document.getElementById("salesTable").style.display = "none";
+    document.getElementById("emptySales").style.display = "block";
+    return;
+  }
+  
+  document.getElementById("salesTable").style.display = "table";
+  document.getElementById("emptySales").style.display = "none";
+  
+  salesList.forEach(s => {
+    // 把試算表的換行符號(\n)變成HTML的<br>
+    var itemsHtml = s.items.replace(/\n/g, "<br>");
+    var discountText = s.discount === "無折扣" ? "-" : s.discount;
+    
+    var tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td style="white-space:nowrap;">${s.time}</td>
+      <td class="sales-items">${itemsHtml}</td>
+      <td style="color:#D85A30; font-size:13px;">${discountText}</td>
+      <td style="text-align:right; font-weight:600;">$${s.final}</td>
+    `;
+    tbody.appendChild(tr);
+  });
 }
 
 function parseInventory() {
@@ -127,7 +218,6 @@ function parseInventory() {
 function renderProducts() {
   var wrap = document.getElementById("productList");
   wrap.innerHTML = "";
-  
   grouped.forEach((g, index) => {
     var colors = [...new Set(g.items.map(x => x.color))];
     var colorOpts = colors.map(c => `<option value="${c}">${c}</option>`).join('');
@@ -208,7 +298,7 @@ function renderCart() {
       `;
     }
   }
-  if (cartCount === 0) { wrap.innerHTML = '<div class="empty-cart">尚未加入任何商品</div>'; }
+  if (cartCount === 0) { wrap.innerHTML = '<div class="empty-msg" style="display:block; padding: 10px 0;">尚未加入任何商品</div>'; }
 }
 
 function changeCart(id, delta) {
@@ -222,31 +312,24 @@ function changeCart(id, delta) {
   calcTotal();
 }
 
-// 💡 點擊「快速折扣按鈕」時的邏輯
 document.querySelectorAll('.btn-discount').forEach(btn => {
   btn.addEventListener('click', function() {
-    // 1. 清空自訂輸入框
     document.getElementById("customDiscount").value = "";
-    // 2. 切換按鈕狀態
     document.querySelectorAll('.btn-discount').forEach(b => b.classList.remove('active'));
     this.classList.add('active');
-    
     discountType = this.getAttribute('data-type');
     discountVal = parseFloat(this.getAttribute('data-val'));
     calcTotal();
   });
 });
 
-// 💡 監聽「自訂輸入框」的打字事件
 document.getElementById("customDiscount").addEventListener('input', function() {
   var val = parseFloat(this.value);
   if (!isNaN(val) && val > 0) {
-    // 取消上面按鈕的選取狀態
     document.querySelectorAll('.btn-discount').forEach(b => b.classList.remove('active'));
     discountType = "custom";
     discountVal = val;
   } else {
-    // 如果清空輸入框，就自動變回「無折扣」
     document.querySelectorAll('.btn-discount')[0].click(); 
   }
   calcTotal();
@@ -258,15 +341,10 @@ function calcTotal() {
     var target = inventory.find(x => x.id == id);
     orig += target.price * cart[id];
   }
-  
   var finalAmt = orig;
-  if (discountType === "percent") { 
-    finalAmt = Math.round(orig * discountVal); 
-  } else if (discountType === "minus" || discountType === "custom") { 
-    finalAmt = orig - discountVal; 
-  }
-  
-  if (finalAmt < 0) finalAmt = 0; // 防止扣成負數
+  if (discountType === "percent") { finalAmt = Math.round(orig * discountVal); } 
+  else if (discountType === "minus" || discountType === "custom") { finalAmt = orig - discountVal; }
+  if (finalAmt < 0) finalAmt = 0; 
   
   document.getElementById("origTotal").textContent = "$" + orig;
   document.getElementById("finalTotal").textContent = "$" + finalAmt;
@@ -283,13 +361,9 @@ document.getElementById("submitBtn").addEventListener("click", function() {
     return { row: target.row, id: id, name: target.name, color: target.color, size: target.size, qty: cart[id] };
   });
 
-  // 💡 判斷要傳送給後台的「折扣明細文字」
   var desc = "";
-  if (discountType === "custom") {
-    desc = "自訂折抵 $" + discountVal;
-  } else {
-    desc = document.querySelector('.btn-discount.active').textContent;
-  }
+  if (discountType === "custom") { desc = "自訂折抵 $" + discountVal; } 
+  else { desc = document.querySelector('.btn-discount.active').textContent; }
   
   this.textContent = "結帳中...";
   this.disabled = true;
@@ -308,14 +382,14 @@ document.getElementById("submitBtn").addEventListener("click", function() {
     if (data.success) {
       alert("結帳成功！庫存已自動扣除。");
       cart = {};
-      document.getElementById("customDiscount").value = ""; // 清空輸入框
-      document.querySelectorAll('.btn-discount')[0].click(); // 恢復無折扣
-      loadData(); 
+      document.getElementById("customDiscount").value = ""; 
+      document.querySelectorAll('.btn-discount')[0].click(); 
+      loadData(); // 💡 重新載入資料時，會自動把剛才那一筆抓到「銷售紀錄」裡面！
     } else {
       alert("失敗：" + data.message);
+      document.getElementById("submitBtn").textContent = "結帳並扣除庫存";
+      document.getElementById("submitBtn").disabled = false;
     }
-    document.getElementById("submitBtn").textContent = "結帳並扣除庫存";
-    document.getElementById("submitBtn").disabled = false;
   })
   .catch(() => {
     alert("網路連線異常，請再試一次。");
@@ -324,6 +398,7 @@ document.getElementById("submitBtn").addEventListener("click", function() {
   });
 });
 
+// 初始化
 loadData();
 </script>
 </body>
