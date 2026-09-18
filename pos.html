@@ -8,37 +8,55 @@
   body { font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #F7F6F2; color: #222; }
   h1 { font-size: 22px; font-weight: 600; text-align: center; margin-bottom: 20px; }
   
-  .item { background: #fff; border: 1px solid #ddd; border-radius: 12px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
-  .item-info { flex: 1; }
-  .item-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
-  .item-meta { font-size: 13px; color: #777; }
-  .stock-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-weight: 600; background: #E1F5EE; color: #0F6E56; margin-top: 4px; }
-  .stock-badge.low { background: #FAECE7; color: #993C1D; }
+  /* 商品卡片區塊 */
+  .item { background: #fff; border: 1px solid #ddd; border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+  .item-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #222;}
+  .row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;}
+  select { flex: 1; height: 38px; border-radius: 8px; border: 1px solid #ccc; padding: 0 10px; font-size: 14px; background: #fff; margin-right: 8px; }
+  select:last-child { margin-right: 0; }
   
-  .cart-controls { display: flex; align-items: center; gap: 10px; }
-  .btn-icon { width: 32px; height: 32px; border-radius: 8px; border: 1px solid #ccc; background: #fff; font-size: 18px; cursor: pointer; }
-  .qty { font-size: 16px; font-weight: 600; min-width: 20px; text-align: center; }
+  .sku-info { font-size: 14px; color: #555; }
+  .stock-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-weight: 600; background: #E1F5EE; color: #0F6E56; margin-left: 6px;}
+  .stock-badge.low { background: #FAECE7; color: #993C1D; }
+  .btn-add { background: #D85A30; color: #fff; border: none; border-radius: 8px; padding: 8px 16px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .btn-add:disabled { background: #ccc; cursor: not-allowed; }
 
-  .checkout-panel { background: #fff; border-radius: 12px; padding: 20px; margin-top: 20px; border: 1px solid #ddd; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
-  .row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 15px; }
+  /* 結帳與購物車面板 */
+  .checkout-panel { background: #fff; border-radius: 12px; padding: 20px; margin-top: 24px; border: 1px solid #ddd; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
+  .panel-title { font-size: 15px; font-weight: 600; margin: 0 0 16px 0; border-bottom: 2px solid #F7F6F2; padding-bottom: 8px; }
+  
+  .cart-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px dashed #eee; }
+  .cart-item-name { font-size: 15px; font-weight: 500; }
+  .cart-controls { display: flex; align-items: center; gap: 10px; }
+  .btn-icon { width: 28px; height: 28px; border-radius: 6px; border: 1px solid #ccc; background: #fff; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;}
+  .qty { font-size: 15px; font-weight: 600; min-width: 20px; text-align: center; }
+
   .discount-btns { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px;}
   .btn-discount { flex: 1; min-width: 70px; padding: 8px 4px; border-radius: 8px; border: 1px solid #ccc; background: #fff; font-size: 13px; cursor: pointer; white-space: nowrap; text-align: center;}
-  .btn-discount.active { background: #D85A30; color: #fff; border-color: #D85A30; font-weight: 600;}
+  .btn-discount.active { background: #222; color: #fff; border-color: #222; font-weight: 600;}
   
   .total-row { border-top: 2px solid #F7F6F2; padding-top: 12px; font-size: 18px; font-weight: 600; color: #D85A30; display: flex; justify-content: space-between; }
-  .btn-submit { width: 100%; height: 50px; border-radius: 10px; background: #222; color: #fff; font-size: 18px; font-weight: 600; border: none; margin-top: 16px; cursor: pointer; }
+  .btn-submit { width: 100%; height: 50px; border-radius: 10px; background: #D85A30; color: #fff; font-size: 18px; font-weight: 600; border: none; margin-top: 16px; cursor: pointer; }
   .btn-submit:disabled { background: #ccc; cursor: not-allowed; }
+  
   #loading { text-align: center; color: #777; margin: 40px 0; }
+  .empty-cart { text-align: center; color: #999; font-size: 13px; margin: 20px 0; }
 </style>
 </head>
 <body>
 
   <h1>Telar 服飾結帳系統</h1>
   <div id="loading">讀取庫存中...</div>
-  <div id="inventoryList"></div>
+  
+  <!-- 商品選單區塊 -->
+  <div id="productList"></div>
 
+  <!-- 結帳車區塊 -->
   <div class="checkout-panel">
-    <div class="row">
+    <h3 class="panel-title">🛒 結帳清單</h3>
+    <div id="cartList"><div class="empty-cart">尚未加入任何商品</div></div>
+
+    <div class="row" style="margin-top: 20px; font-size: 14px;">
       <span style="color:#777">商品總計</span>
       <span id="origTotal">$0</span>
     </div>
@@ -48,7 +66,6 @@
       <div class="btn-discount active" data-type="none" data-val="0">無折扣</div>
       <div class="btn-discount" data-type="percent" data-val="0.9">9折</div>
       <div class="btn-discount" data-type="percent" data-val="0.85">85折</div>
-       <div class="btn-discount" data-type="minus" data-val="0.8">折 8折</div>
       <div class="btn-discount" data-type="minus" data-val="100">折 $100</div>
     </div>
 
@@ -66,66 +83,166 @@ var API_URL = "https://script.google.com/macros/s/AKfycbzztuni9xXSuwRuRAXrlP_N5D
 // ==================================
 
 var inventory = [];
+var grouped = []; // 把同款式的商品群組化
 var cart = {}; // id -> qty
 var discountType = "none";
 var discountVal = 0;
 
 function loadData() {
   document.getElementById("loading").style.display = "block";
-  document.getElementById("inventoryList").innerHTML = "";
+  document.getElementById("productList").innerHTML = "";
   fetch(API_URL)
     .then(res => res.json())
     .then(data => {
       inventory = data.inventory || [];
+      parseInventory(); // 群組化資料
       document.getElementById("loading").style.display = "none";
-      renderList();
+      renderProducts();
+      renderCart();
       calcTotal();
-    });
+    })
+    .catch(() => alert("載入失敗，請重新整理"));
 }
 
-function renderList() {
-  var wrap = document.getElementById("inventoryList");
-  wrap.innerHTML = "";
+// 根據「款式名稱(name)」把資料分組
+function parseInventory() {
+  var groups = {};
   inventory.forEach(item => {
-    var qty = cart[item.id] || 0;
-    var stockClass = item.stock <= 3 ? "low" : "";
-    var stockText = item.stock <= 0 ? "已售完" : "庫存: " + item.stock;
-    
+    if (!groups[item.name]) {
+      groups[item.name] = { name: item.name, items: [] };
+    }
+    groups[item.name].items.push(item);
+  });
+  grouped = Object.values(groups);
+}
+
+// 渲染款式清單
+function renderProducts() {
+  var wrap = document.getElementById("productList");
+  wrap.innerHTML = "";
+  
+  grouped.forEach((g, index) => {
+    // 抓出這款商品有哪幾種顏色 (不重複)
+    var colors = [...new Set(g.items.map(x => x.color))];
+    var colorOpts = colors.map(c => `<option value="${c}">${c}</option>`).join('');
+
     var html = `
       <div class="item">
-        <div class="item-info">
-          <div class="item-title">${item.name}</div>
-          <div class="item-meta">${item.color} - ${item.size} | $${item.price}</div>
-          <div class="stock-badge ${stockClass}">${stockText}</div>
+        <div class="item-title">${g.name}</div>
+        <div class="row">
+          <select id="color-${index}" onchange="updateSize(${index})">
+            ${colorOpts}
+          </select>
+          <select id="size-${index}" onchange="updateInfo(${index})">
+            <!-- 尺寸會根據顏色動態更新 -->
+          </select>
         </div>
-        <div class="cart-controls">
-          <button class="btn-icon minus" data-id="${item.id}">−</button>
-          <span class="qty">${qty}</span>
-          <button class="btn-icon plus" data-id="${item.id}" ${item.stock <= 0 ? "disabled" : ""}>+</button>
+        <div class="row" style="margin-top: 16px; margin-bottom: 0;">
+          <div id="info-${index}" class="sku-info"></div>
+          <button class="btn-add" onclick="addToCart(${index})">加入</button>
         </div>
       </div>
     `;
     wrap.innerHTML += html;
   });
 
-  document.querySelectorAll('.minus').forEach(btn => {
-    btn.addEventListener('click', function() {
-      var id = this.getAttribute('data-id');
-      if (cart[id] > 0) { cart[id]--; if(cart[id]===0) delete cart[id]; renderList(); calcTotal(); }
-    });
-  });
-
-  document.querySelectorAll('.plus').forEach(btn => {
-    btn.addEventListener('click', function() {
-      var id = this.getAttribute('data-id');
-      var target = inventory.find(x => x.id == id);
-      var current = cart[id] || 0;
-      if (current < target.stock) { cart[id] = current + 1; renderList(); calcTotal(); }
-      else { alert("超過目前庫存數量！"); }
-    });
+  // 初始化每個卡片的尺寸與價格顯示
+  grouped.forEach((g, index) => {
+    updateSize(index);
   });
 }
 
+// 當顏色改變時，更新該顏色對應的尺寸
+function updateSize(index) {
+  var g = grouped[index];
+  var color = document.getElementById(`color-${index}`).value;
+  var availableItems = g.items.filter(x => x.color === color);
+  var sizes = [...new Set(availableItems.map(x => x.size))];
+  
+  var sizeOpts = sizes.map(s => `<option value="${s}">${s}</option>`).join('');
+  document.getElementById(`size-${index}`).innerHTML = sizeOpts;
+  
+  updateInfo(index); // 更新庫存顯示
+}
+
+// 更新畫面上的庫存與價格
+function updateInfo(index) {
+  var g = grouped[index];
+  var color = document.getElementById(`color-${index}`).value;
+  var size = document.getElementById(`size-${index}`).value;
+  var sku = g.items.find(x => x.color === color && x.size === size);
+
+  var infoEl = document.getElementById(`info-${index}`);
+  if (sku) {
+    var stockClass = sku.stock <= 3 ? "low" : "";
+    var stockText = sku.stock <= 0 ? "已售完" : "庫存: " + sku.stock;
+    infoEl.innerHTML = `$${sku.price} <span class="stock-badge ${stockClass}">${stockText}</span>`;
+  } else {
+    infoEl.innerHTML = "無此規格";
+  }
+}
+
+// 加入購物車
+function addToCart(index) {
+  var g = grouped[index];
+  var color = document.getElementById(`color-${index}`).value;
+  var size = document.getElementById(`size-${index}`).value;
+  var sku = g.items.find(x => x.color === color && x.size === size);
+
+  if (!sku) return;
+  if (sku.stock <= 0) { alert("此規格已售完！"); return; }
+
+  var currentQty = cart[sku.id] || 0;
+  if (currentQty >= sku.stock) { alert("無法加入，已達最高庫存數量！"); return; }
+
+  cart[sku.id] = currentQty + 1;
+  renderCart();
+  calcTotal();
+}
+
+// 渲染結帳清單
+function renderCart() {
+  var wrap = document.getElementById("cartList");
+  var cartCount = 0;
+  wrap.innerHTML = "";
+
+  for (var id in cart) {
+    var qty = cart[id];
+    var sku = inventory.find(x => x.id == id);
+    if (sku) {
+      cartCount += qty;
+      wrap.innerHTML += `
+        <div class="cart-item">
+          <div class="cart-item-name">${sku.name} <span style="color:#777;font-size:13px;">(${sku.color} - ${sku.size})</span></div>
+          <div class="cart-controls">
+            <button class="btn-icon minus" onclick="changeCart('${sku.id}', -1)">−</button>
+            <span class="qty">${qty}</span>
+            <button class="btn-icon plus" onclick="changeCart('${sku.id}', 1)">+</button>
+          </div>
+        </div>
+      `;
+    }
+  }
+  if (cartCount === 0) { wrap.innerHTML = '<div class="empty-cart">尚未加入任何商品</div>'; }
+}
+
+// 在購物車內增減數量
+function changeCart(id, delta) {
+  var sku = inventory.find(x => x.id == id);
+  var current = cart[id] || 0;
+  var next = current + delta;
+
+  if (next < 0) return;
+  if (next > sku.stock) { alert("已達最高庫存數量！"); return; }
+
+  if (next === 0) { delete cart[id]; } 
+  else { cart[id] = next; }
+
+  renderCart();
+  calcTotal();
+}
+
+// 折扣按鈕邏輯
 document.querySelectorAll('.btn-discount').forEach(btn => {
   btn.addEventListener('click', function() {
     document.querySelectorAll('.btn-discount').forEach(b => b.classList.remove('active'));
@@ -136,6 +253,7 @@ document.querySelectorAll('.btn-discount').forEach(btn => {
   });
 });
 
+// 計算總金額
 function calcTotal() {
   var orig = 0;
   for (var id in cart) {
@@ -144,21 +262,18 @@ function calcTotal() {
   }
   
   var finalAmt = orig;
-  if (discountType === "percent") {
-    finalAmt = Math.round(orig * discountVal);
-  } else if (discountType === "minus") {
-    finalAmt = orig - discountVal;
-    if (finalAmt < 0) finalAmt = 0;
-  }
+  if (discountType === "percent") { finalAmt = Math.round(orig * discountVal); } 
+  else if (discountType === "minus") { finalAmt = orig - discountVal; if (finalAmt < 0) finalAmt = 0; }
   
   document.getElementById("origTotal").textContent = "$" + orig;
   document.getElementById("finalTotal").textContent = "$" + finalAmt;
   return { orig: orig, finalAmt: finalAmt };
 }
 
+// 結帳送出
 document.getElementById("submitBtn").addEventListener("click", function() {
   var keys = Object.keys(cart);
-  if (keys.length === 0) { alert("購物車是空的！"); return; }
+  if (keys.length === 0) { alert("結帳清單是空的！"); return; }
   
   var totals = calcTotal();
   var payloadCart = keys.map(id => {
@@ -185,16 +300,22 @@ document.getElementById("submitBtn").addEventListener("click", function() {
     if (data.success) {
       alert("結帳成功！庫存已自動扣除。");
       cart = {};
-      document.querySelectorAll('.btn-discount')[0].click(); // 重設折扣
+      document.querySelectorAll('.btn-discount')[0].click(); // 恢復無折扣
       loadData(); // 重新讀取最新庫存
     } else {
       alert("失敗：" + data.message);
     }
     document.getElementById("submitBtn").textContent = "結帳並扣除庫存";
     document.getElementById("submitBtn").disabled = false;
+  })
+  .catch(() => {
+    alert("網路連線異常，請再試一次。");
+    document.getElementById("submitBtn").textContent = "結帳並扣除庫存";
+    document.getElementById("submitBtn").disabled = false;
   });
 });
 
+// 初始化載入
 loadData();
 </script>
 </body>
