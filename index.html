@@ -257,9 +257,19 @@ document.getElementById("submitBtn").addEventListener("click", function() {
         return;
       }
 
-      // 💡 結帳成功後：如果在 LINE 裡面就關閉網頁等待推播，如果是在瀏覽器就顯示成功卡片
+  // 💡 結帳成功後：如果在 LINE 裡面就關閉網頁等待推播，如果是在瀏覽器就顯示成功卡片
       if (liff.isInClient()) {
-        liff.closeWindow();
+        // 💡 結帳成功時，讓客人的 LINE 自動對官方帳號發送通知
+        liff.sendMessages([
+          {
+            type: 'text',
+            text: '【新訂單通知】\n我已透過系統送出預約囉！\n姓名：' + name + '\n時間：' + pickupTime
+          }
+        ]).then(function() {
+          liff.closeWindow();
+        }).catch(function() {
+          liff.closeWindow();
+        });
       } else {
         showSuccessCard(cartItems, result.total_price, pickupTime);
       }
