@@ -56,7 +56,6 @@
   <label class="field-label">聯絡電話(必填)</label>
   <input type="tel" id="customerPhone" placeholder="請輸入手機號碼">
   
-  <!-- 💡 備註欄位 -->
   <label class="field-label">備註(選填，例如：自備餐盒)</label>
   <input type="text" id="orderRemark" placeholder="如有特殊需求請填寫">
 
@@ -75,10 +74,8 @@
   </div>
 
 <script>
-// ===== ⚠️ 請務必修改這兩個設定 ⚠️ =====
 var LIFF_ID = "2011627242-SuwYkGQ8";
 var API_URL = "https://script.google.com/macros/s/AKfycbzBEjhmI7AQWfUx16I_D_HljhjVfGdYpNPW_-hPrhLDZw9Tyjf0z4VdgcmdbIhLsSD6/exec";
-// ===================================
 
 var menu = [];
 var cart = {}; 
@@ -105,7 +102,6 @@ function renderFlavors() {
       html += '<button class="cart-btn plus" data-id="' + f.flavor_id + '">+</button>';
       html += '</div>';
     } else {
-      // 💡 已售完提示
       html += '<div class="soldout-notice"> 此口味已完售，請到 LINE 訊息留言詢問還有沒有</div>';
     }
     
@@ -203,7 +199,6 @@ document.querySelectorAll(".dine-option").forEach(function(el) {
   });
 });
 
-// 如果客人不是用 LINE App 開啟，顯示完成畫面的函數
 function showSuccessCard(cartItems, totalPrice, pickupTime) {
   var confirmCard = document.getElementById("confirmCard");
   var summaryText = "共 " + cartItems.length + " 項餐點(" + dineOption + "), 取餐時間 " + pickupTime + "，總計 $" + totalPrice;
@@ -246,7 +241,11 @@ document.getElementById("submitBtn").addEventListener("click", function() {
       line_user_id: userProfile.userId || ""
     })
   })
-    .then(function(res) { return res.json(); })
+    .then(function(res) { 
+      // 確保伺服器有正常回應，否則拋出錯誤
+      if (!res.ok) throw new Error("Server Error");
+      return res.json(); 
+    })
     .then(function(result) {
       if (!result.success) {
         document.getElementById("submitBtn").disabled = false;
@@ -257,52 +256,53 @@ document.getElementById("submitBtn").addEventListener("click", function() {
         return;
       }
 
-// 💡 結帳成功後：如果在 LINE 裡面就發送完整明細並關閉網頁
-      if (liff.isInClient()) {
-        
-        // 1. 組合餐點明細 (因為是當日版，直接用 menu 尋找即可)
-        var itemsText = "";
-        for (var id in cart) {
-          var f = menu.find(function(x) { return x.flavor_id === id; });
-          if (f) {
-            itemsText += f.name + " × " + cart[id] + "\n";
+      // 💡 加入 Try-Catch 強制防護：就算 LINE 權限沒開，也會告知成功並關閉網頁
+      try {
+        if (liff.isInClient()) {
+          var itemsText = "";
+          for (var id in cart) {
+            var f = menu.find(function(x) { return x.flavor_id === id; });
+            if (f) {
+              itemsText += f.name + " × " + cart[id] + "\n";
+            }
           }
+
+          var remarkText = remark ? ("\n📝 備註：" + remark) : "";
+
+          var msgText = '【Telar Studio 預定餐點明細】\n\n' +
+                        '👤 姓名：' + name + '\n' +
+                        '📞 電話：' + phone + '\n' +
+                        '🛍️ 內用/外帶：' + dineOption + '\n' +
+                        '⏰ 取餐：' + pickupTime + 
+                        remarkText + '\n' +
+                        '----------------------\n' +
+                        itemsText + 
+                        '----------------------\n' +
+                        '💰 總計：$' + (result.total_price || 0);
+
+          liff.sendMessages([
+            { type: 'text', text: msgText }
+          ]).then(function() {
+            liff.closeWindow();
+          }).catch(function(err) {
+            // 如果客人沒有開「代發訊息」權限，攔截錯誤並關閉
+            alert("訂單已送出，感謝您的預約！");
+            liff.closeWindow();
+          });
+
+        } else {
+          showSuccessCard(cartItems, result.total_price, pickupTime);
         }
-
-        // 2. 判斷是否有填寫備註
-        var remarkText = remark ? ("\n📝 備註：" + remark) : "";
-
-        // 3. 把客人的發言改成系統明細的格式 (已移除日期變數)
-        var msgText = '【Telar Studio 預定餐點明細】\n\n' +
-                      '👤 姓名：' + name + '\n' +
-                      '📞 電話：' + phone + '\n' +
-                      '🛍️ 內用/外帶：' + dineOption + '\n' +
-                      '⏰ 取餐：' + pickupTime + 
-                      remarkText + '\n' +
-                      '----------------------\n' +
-                      itemsText + 
-                      '----------------------\n' +
-                      '💰 總計：$' + (result.total_price || 0);
-
-        liff.sendMessages([
-          {
-            type: 'text',
-            text: msgText
-          }
-        ]).then(function() {
-          liff.closeWindow();
-        }).catch(function() {
-          liff.closeWindow();
-        });
-
-      } else {
-        showSuccessCard(cartItems, result.total_price, pickupTime);
+      } catch (e) {
+        // 捕捉任何前端未知的錯誤，確保網頁能關閉
+        alert("訂單已成立！");
+        if (liff.isInClient()) { liff.closeWindow(); }
       }
     })
-    .catch(function() {
+    .catch(function(err) {
       document.getElementById("submitBtn").disabled = false;
       document.getElementById("submitBtn").textContent = "送出預約";
-      errEl.textContent = "網路連線失敗,請再試一次";
+      errEl.textContent = "網路連線異常，但可能已送出，請向店家確認。";
       errEl.style.display = "block";
     });
 });
