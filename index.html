@@ -269,16 +269,16 @@ document.getElementById("submitBtn").addEventListener("click", function() {
 
           var remarkText = remark ? ("\n📝 備註：" + remark) : "";
 
-          var msgText = '【Telar Studio 預定餐點明細】\n\n' +
-                        '👤 姓名：' + name + '\n' +
-                        '📞 電話：' + phone + '\n' +
-                        '🛍️ 內用/外帶：' + dineOption + '\n' +
-                        '⏰ 取餐：' + pickupTime + 
+          var msgText = '感謝您的訂購，餐點預定明細： \n\n' +
+                        '姓名：' + name + '\n' +
+                        '電話：' + phone + '\n' +
+                        '內用/外帶：' + dineOption + '\n' +
+                        '取餐：' + pickupTime + 
                         remarkText + '\n' +
                         '----------------------\n' +
                         itemsText + 
                         '----------------------\n' +
-                        '💰 總計：$' + (result.total_price || 0);
+                        '總計：$' + (result.total_price || 0);
 
           liff.sendMessages([
             { type: 'text', text: msgText }
