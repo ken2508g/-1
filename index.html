@@ -77,7 +77,7 @@
 <script>
 // ===== ⚠️ 請務必修改這兩個設定 ⚠️ =====
 var LIFF_ID = "2011627242-SuwYkGQ8";
-var API_URL = "https://script.google.com/macros/s/AKfycbxLUGCQAjO9NvT-pr5htgB1P3Cd73fgKS0aFj4N3LQjdGhdbVY1C_GH8L3Gu76vE2mI/exec";
+var API_URL = "https://script.google.com/macros/s/AKfycbzBEjhmI7AQWfUx16I_D_HljhjVfGdYpNPW_-hPrhLDZw9Tyjf0z4VdgcmdbIhLsSD6/exec";
 // ===================================
 
 var menu = [];
@@ -257,19 +257,43 @@ document.getElementById("submitBtn").addEventListener("click", function() {
         return;
       }
 
-  // 💡 結帳成功後：如果在 LINE 裡面就關閉網頁等待推播，如果是在瀏覽器就顯示成功卡片
+// 💡 結帳成功後：如果在 LINE 裡面就發送完整明細並關閉網頁
       if (liff.isInClient()) {
-        // 💡 結帳成功時，讓客人的 LINE 自動對官方帳號發送通知
+        
+        // 1. 組合餐點明細
+        var itemsText = "";
+        for (var id in cart) {
+          var f = (typeof currentMenu !== 'undefined') 
+                    ? currentMenu.find(function(x) { return x.flavor_id === id; }) 
+                    : menu.find(function(x) { return x.flavor_id === id; });
+          if (f) {
+            itemsText += f.name + " × " + cart[id] + "\n";
+          }
+        }
+
+        // 3. 把客人的發言改成原本系統明細的格式
+        var msgText = '【Telar Studio 預定餐點明細】\n\n' +
+                      '👤 姓名：' + name + '\n' +
+                      '📞 電話：' + phone + '\n' +
+                      '🛍️ 內用/外帶：' + dineOption + '\n' +
+                      '⏰ 取餐：' + dateText + pickupTime + 
+                      remarkText + '\n' +
+                      '----------------------\n' +
+                      itemsText + 
+                      '----------------------\n' +
+                      '💰 總計：$' + (result.total_price || 0);
+
         liff.sendMessages([
           {
             type: 'text',
-            text: '【新訂單通知】\n我已透過系統送出預約囉！\n姓名：' + name + '\n時間：' + pickupTime
+            text: msgText
           }
         ]).then(function() {
           liff.closeWindow();
         }).catch(function() {
           liff.closeWindow();
         });
+
       } else {
         showSuccessCard(cartItems, result.total_price, pickupTime);
       }
