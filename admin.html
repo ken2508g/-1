@@ -146,7 +146,7 @@
 
 <script>
 // ===== 請修改以下設定 =====
-var API_URL = "https://script.google.com/macros/s/AKfycbxlCnYcc8kVgiMNBG5zNbL_z2H3Bv16398vWHBBPZ9TdrCSPg065wega7xud-Zfq79B/exec";
+var API_URL = "https://script.google.com/macros/s/AKfycbz-qH0q3uhCecS3DJmQcP6V70A68vh05qp3fe2ryc8ipDkjcyUXc9uT5J8oppjgR_09/exec";
 var REFRESH_SECONDS = 15;
 // ============================
 
@@ -174,19 +174,12 @@ function playTone(freq, startTime, duration) {
   osc.start(startTime);
   osc.stop(startTime + duration);
 }
-var audio = new Audio("https://actions.google.com/sounds/v1/doors/store_door_chime.ogg");
-audio.volume = 1.0;
-
-// 讓聲音連響 3 次
-var playCount = 0;
-audio.addEventListener('ended', function() {
-  playCount++;
-  if (playCount < 3) {
-    audio.play(); // 播完如果還沒滿3次，就再播一次
-  }
-});
-
-audio.play();
+function playDing() {
+  if (!soundEnabled || !audioCtx) return;
+  var t = audioCtx.currentTime;
+  playTone(880, t, 0.22);
+  playTone(660, t + 0.24, 0.28);
+}
 document.getElementById("soundToggle").addEventListener("click", function() {
   soundEnabled = !soundEnabled;
   this.textContent = soundEnabled ? "🔔 音效開" : "🔕 音效關";
