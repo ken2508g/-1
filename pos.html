@@ -8,7 +8,7 @@
   body { font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #F7F6F2; color: #222; }
   h1 { font-size: 22px; font-weight: 600; text-align: center; margin-bottom: 20px; }
   
-  /* 💡 切換分頁樣式 */
+  /* 切換分頁樣式 */
   #tabs { display: flex; gap: 10px; margin-bottom: 20px; }
   .tab-btn { flex: 1; padding: 12px; border-radius: 10px; border: 1px solid #ccc; background: #fff; font-size: 15px; font-weight: 600; cursor: pointer; color: #555; }
   .tab-btn.active { background: #222; color: #fff; border-color: #222; }
@@ -47,7 +47,7 @@
   .btn-submit { width: 100%; height: 50px; border-radius: 10px; background: #D85A30; color: #fff; font-size: 18px; font-weight: 600; border: none; margin-top: 16px; cursor: pointer; }
   .btn-submit:disabled { background: #ccc; cursor: not-allowed; }
   
-  /* 💡 銷售紀錄表格樣式 */
+  /* 銷售紀錄表格樣式 */
   table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.03); border: 1px solid #ddd; }
   th, td { text-align: left; padding: 14px 12px; font-size: 14px; border-bottom: 1px solid #eee; }
   th { color: #777; font-size: 13px; font-weight: 600; background: #fafafa; }
@@ -61,7 +61,7 @@
 
   <h1>Telar 服飾結帳系統</h1>
   
-  <!-- 💡 分頁按鈕 -->
+  <!-- 分頁按鈕 -->
   <div id="tabs">
     <button class="tab-btn active" id="tabPos">收銀結帳</button>
     <button class="tab-btn" id="tabSales">銷售紀錄</button>
@@ -71,6 +71,9 @@
   
   <!-- ================= 收銀結帳畫面 ================= -->
   <div id="posView" style="display:none;">
+    <!-- 💡 總庫存顯示區塊 -->
+    <div id="totalStockDisplay" style="text-align: right; font-size: 14px; color: #D85A30; margin-bottom: 10px; font-weight: 600;"></div>
+    
     <div id="productList"></div>
 
     <div class="checkout-panel">
@@ -87,7 +90,6 @@
         <div class="btn-discount active" data-type="none" data-val="0">無折扣</div>
         <div class="btn-discount" data-type="percent" data-val="0.9">9折</div>
         <div class="btn-discount" data-type="percent" data-val="0.85">85折</div>
-        <div class="btn-discount" data-type="percent" data-val="0.80">8折</div>
         <div class="btn-discount" data-type="minus" data-val="100">折 $100</div>
       </div>
       
@@ -122,7 +124,7 @@
   </div>
 
 <script>
-// ===== ⚠️ 替換成你的 API 網址 =====
+// ===== ⚠️ 請務必替換成你的 Google Apps Script 網址 =====
 var API_URL = "https://script.google.com/macros/s/AKfycbyW-dDbDh14pBEX-EWSotI8bg9qz_J7jQmvUILJZmsEyeTy_LdUzf3Upv1fFjSlbyw5xw/exec";
 // ==================================
 
@@ -132,7 +134,7 @@ var cart = {};
 var discountType = "none";
 var discountVal = 0;
 
-// 💡 分頁切換邏輯
+// 分頁切換邏輯
 document.getElementById("tabPos").addEventListener("click", function() {
   document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
   this.classList.add("active");
@@ -157,12 +159,20 @@ function loadData() {
     .then(data => {
       // 處理商品庫存
       inventory = data.inventory || [];
+      
+      // 💡 計算並顯示總庫存量
+      var totalStock = 0;
+      inventory.forEach(function(item) {
+        totalStock += Number(item.stock) || 0;
+      });
+      document.getElementById("totalStockDisplay").textContent = "目前總庫存：" + totalStock + " 件";
+
       parseInventory(); 
       renderProducts();
       renderCart();
       calcTotal();
 
-      // 💡 處理銷售紀錄
+      // 處理銷售紀錄
       renderSales(data.sales || []);
 
       document.getElementById("loading").style.display = "none";
@@ -177,7 +187,7 @@ function loadData() {
     .catch(() => alert("載入失敗，請重新整理"));
 }
 
-// 💡 渲染銷售紀錄表格
+// 渲染銷售紀錄表格
 function renderSales(salesList) {
   var tbody = document.getElementById("salesBody");
   tbody.innerHTML = "";
@@ -385,7 +395,7 @@ document.getElementById("submitBtn").addEventListener("click", function() {
       cart = {};
       document.getElementById("customDiscount").value = ""; 
       document.querySelectorAll('.btn-discount')[0].click(); 
-      loadData(); // 💡 重新載入資料時，會自動把剛才那一筆抓到「銷售紀錄」裡面！
+      loadData(); 
     } else {
       alert("失敗：" + data.message);
       document.getElementById("submitBtn").textContent = "結帳並扣除庫存";
