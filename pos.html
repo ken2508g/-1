@@ -71,9 +71,9 @@
   
   <!-- ================= 收銀結帳畫面 ================= -->
   <div id="posView" style="display:none;">
-    
+    <!-- 💡 總庫存顯示區塊 -->
     <div id="totalStockDisplay" style="text-align: right; font-size: 14px; color: #D85A30; margin-bottom: 10px; font-weight: 600;"></div>
-
+    
     <div id="productList"></div>
 
     <div class="checkout-panel">
@@ -124,7 +124,7 @@
   </div>
 
 <script>
-// ===== ⚠️ 替換成你的 API 網址 =====
+// ===== ⚠️ 請務必替換成你的 Google Apps Script 網址 =====
 var API_URL = "https://script.google.com/macros/s/AKfycbyW-dDbDh14pBEX-EWSotI8bg9qz_J7jQmvUILJZmsEyeTy_LdUzf3Upv1fFjSlbyw5xw/exec";
 // ==================================
 
@@ -157,8 +157,10 @@ function loadData() {
   fetch(API_URL)
     .then(res => res.json())
     .then(data => {
+      // 處理商品庫存
       inventory = data.inventory || [];
       
+      // 💡 計算並顯示總庫存量
       var totalStock = 0;
       inventory.forEach(function(item) {
         totalStock += Number(item.stock) || 0;
@@ -169,10 +171,13 @@ function loadData() {
       renderProducts();
       renderCart();
       calcTotal();
+
+      // 處理銷售紀錄
       renderSales(data.sales || []);
 
       document.getElementById("loading").style.display = "none";
       
+      // 預設顯示哪個畫面
       if (document.getElementById("tabPos").classList.contains("active")) {
         document.getElementById("posView").style.display = "block";
       } else {
@@ -182,6 +187,7 @@ function loadData() {
     .catch(() => alert("載入失敗，請重新整理"));
 }
 
+// 渲染銷售紀錄表格
 function renderSales(salesList) {
   var tbody = document.getElementById("salesBody");
   tbody.innerHTML = "";
@@ -196,6 +202,7 @@ function renderSales(salesList) {
   document.getElementById("emptySales").style.display = "none";
   
   salesList.forEach(s => {
+    // 把試算表的換行符號(\n)變成HTML的<br>
     var itemsHtml = s.items.replace(/\n/g, "<br>");
     var discountText = s.discount === "無折扣" ? "-" : s.discount;
     
@@ -355,75 +362,6 @@ function calcTotal() {
   return { orig: orig, finalAmt: finalAmt };
 }
 
-// 💡 產生出貨單並呼叫列印
-function printShippingNote(cartItems, finalTotal, discountDesc) {
-  var printWindow = window.open('', '_blank');
-  var now = new Date();
-  var timeStr = now.getFullYear() + '/' + (now.getMonth()+1) + '/' + now.getDate() + ' ' + now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
-
-  var itemsHtml = '';
-  cartItems.forEach(function(item) {
-    itemsHtml += `
-      <tr>
-        <td style="padding: 10px 0; border-bottom: 1px dashed #ccc;">${item.name} <br><span style="font-size:12px;color:#777;">(${item.color} - ${item.size})</span></td>
-        <td style="padding: 10px 0; border-bottom: 1px dashed #ccc; text-align: center; font-weight: bold;">${item.qty}</td>
-      </tr>`;
-  });
-
-  var html = `
-  <!DOCTYPE html>
-  <html>
-  <head>
-    <title>出貨單</title>
-    <meta charset="utf-8">
-    <style>
-      body { font-family: -apple-system, sans-serif; padding: 20px; color: #222; max-width: 400px; margin: 0 auto; }
-      .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #222; padding-bottom: 10px; }
-      .header h2 { margin: 0 0 5px 0; font-size: 20px; letter-spacing: 1px; }
-      .header p { margin: 0; font-size: 12px; color: #555; }
-      table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px; }
-      th { text-align: left; padding: 8px 0; border-bottom: 2px solid #222; font-size: 13px; color: #555; }
-      .summary { text-align: right; font-size: 14px; line-height: 1.6; }
-      .total { font-size: 18px; font-weight: bold; margin-top: 10px; border-top: 1px solid #222; padding-top: 10px; }
-      .footer { text-align: center; margin-top: 30px; font-size: 12px; color: #777; }
-    </style>
-  </head>
-  <body>
-    <div class="header">
-      <h2>Telar Studio</h2>
-      <p>出貨明細單</p>
-      <p style="margin-top:5px;">列印時間：${timeStr}</p>
-    </div>
-    <table>
-      <thead>
-        <tr>
-          <th>商品名稱</th>
-          <th style="text-align: center; width: 50px;">數量</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${itemsHtml}
-      </tbody>
-    </table>
-    <div class="summary">
-      <div>折扣項目：${discountDesc}</div>
-      <div class="total">實收總計：$${finalTotal}</div>
-    </div>
-    <div class="footer">感謝您的購買！</div>
-    
-    <script>
-      window.onload = function() { 
-        window.print(); 
-      }
-    <\/script>
-  </body>
-  </html>
-  `;
-  
-  printWindow.document.write(html);
-  printWindow.document.close();
-}
-
 document.getElementById("submitBtn").addEventListener("click", function() {
   var keys = Object.keys(cart);
   if (keys.length === 0) { alert("結帳清單是空的！"); return; }
@@ -453,10 +391,6 @@ document.getElementById("submitBtn").addEventListener("click", function() {
   .then(res => res.json())
   .then(data => {
     if (data.success) {
-      
-      // 💡 結帳成功時，自動呼叫列印出貨單
-      printShippingNote(payloadCart, totals.finalAmt, desc);
-
       alert("結帳成功！庫存已自動扣除。");
       cart = {};
       document.getElementById("customDiscount").value = ""; 
@@ -475,7 +409,7 @@ document.getElementById("submitBtn").addEventListener("click", function() {
   });
 });
 
-// 初始化載入
+// 初始化
 loadData();
 </script>
 </body>
