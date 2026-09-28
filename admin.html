@@ -32,8 +32,12 @@
   
   .emptyMsg { text-align: center; color: #999; padding: 40px 0; display: none; }
   .updatedAt { font-size: 12px; color: #999; margin-top: 14px; }
-  .complete-btn { background: #0F6E56; color: #fff; border: none; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
+  
+  /* 💡 更新的按鈕樣式 */
+  .complete-btn { background: #0F6E56; color: #fff; border: none; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 13px; margin-right: 6px; }
   .complete-btn:disabled { background: #ccc; cursor: not-allowed; }
+  .cancel-btn { background: #c0392b; color: #fff; border: none; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
+  .cancel-btn:disabled { background: #ccc; cursor: not-allowed; }
   
   .flavor { border-radius: 12px; padding: 14px; margin-bottom: 10px; border: 1px solid #ddd; background: #fff; }
   .flavor.selected { border: 2px solid #D85A30; }
@@ -89,7 +93,6 @@
 
   <div id="summary" style="display:none;"></div>
 
-  <!-- 待處理視窗 (增加備註標題) -->
   <div id="ordersView">
     <table id="orderTable">
       <thead>
@@ -101,7 +104,6 @@
     <p id="updatedAt" class="updatedAt"></p>
   </div>
 
-  <!-- 已完成視窗 (增加備註標題) -->
   <div id="completedView" style="display:none">
     <table id="completedTable">
       <thead>
@@ -113,7 +115,6 @@
     <p id="completedUpdatedAt" class="updatedAt"></p>
   </div>
 
-  <!-- 櫃檯點餐視窗 -->
   <div id="counterView" style="display:none">
     <div id="counterFlavors"></div>
     <label class="field-label">用餐方式</label>
@@ -130,7 +131,6 @@
     <label class="field-label">聯絡電話(選填)</label>
     <input type="tel" id="counterCustomerPhone" placeholder="例如:0912345678">
 
-    <!-- 💡 櫃檯也支援備註輸入 -->
     <label class="field-label">備註(選填)</label>
     <input type="text" id="counterRemark" placeholder="例如:加辣、自備餐具">
 
@@ -145,10 +145,8 @@
 </div>
 
 <script>
-// ===== 請修改以下設定 =====
-var API_URL = "https://script.google.com/macros/s/AKfycbxlCnYcc8kVgiMNBG5zNbL_z2H3Bv16398vWHBBPZ9TdrCSPg065wega7xud-Zfq79B/exec";
+var API_URL = "https://script.google.com/macros/s/AKfycbzJNTH5vIEBsw-K8ChQaM-qTRseGw0eRAswNEfdvlPDm3sOyuT6IW4fY_ChoNh9vLfx/exec";
 var REFRESH_SECONDS = 15;
-// ============================
 
 var audioCtx = null;
 var soundEnabled = true;
@@ -292,7 +290,6 @@ function renderOrders(menu, orders, completedOrders, todayRevenue) {
 
   var timeStr = "更新時間 " + new Date().toLocaleTimeString("zh-TW");
 
-  // 渲染待處理訂單列表
   var body = document.getElementById("orderBody");
   body.innerHTML = "";
   if (orders.length === 0) {
@@ -310,16 +307,17 @@ function renderOrders(menu, orders, completedOrders, todayRevenue) {
       var sourceLabel = o.source === "現場" ? "現場" : "LINE";
       var phoneHtml = o.phone ? "<br><span style='font-size:12px;color:#777'>" + o.phone + "</span>" : "";
       
-      // 💡 渲染備註欄，若有備註則用顯眼橘紅色標示
       var remarkHtml = o.remark ? "<span style='color:#D85A30; font-weight:600; font-size:13px;'>" + o.remark + "</span>" : "-";
 
       var tr = document.createElement("tr");
+      // 💡 加入了取消按鈕
       tr.innerHTML = "<td>" + o.pickup_time + "</td>" +
         "<td><span class='tag " + sourceClass + "'>" + sourceLabel + "</span></td>" +
         "<td>" + (o.customer_name || "-") + phoneHtml + "</td><td>" + o.flavor_name + "</td><td>" + o.qty +
         "</td><td><span class='tag " + tagClass + "'>" + o.dine_option + "</span></td><td>$" + o.total_price + "</td>" +
         "<td>" + remarkHtml + "</td>" +
-        "<td><button class='complete-btn' data-id='" + o.order_id + "'>完成</button></td>";
+        "<td style='white-space:nowrap;'><button class='complete-btn' data-id='" + o.order_id + "'>完成</button>" +
+        "<button class='cancel-btn' data-id='" + o.order_id + "'>取消</button></td>";
       body.appendChild(tr);
     });
     
@@ -340,10 +338,40 @@ function renderOrders(menu, orders, completedOrders, todayRevenue) {
         .catch(function() { alert("網路連線失敗"); btn.disabled = false; btn.textContent = "完成"; });
       });
     });
+
+    // 💡 綁定取消按鈕的點擊事件
+    document.querySelectorAll(".cancel-btn").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        if (!confirm("確定要取消這筆訂單嗎？取消後將無法復原。")) return; // 防呆確認視窗
+        
+        var orderId = this.getAttribute("data-id");
+        this.disabled = true;
+        this.textContent = "處理中";
+        
+        fetch(API_URL, {
+          method: "POST",
+          body: JSON.stringify({ action: "cancel", order_id: orderId })
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(result) {
+          if (result.success) {
+            fetchData(false); // 成功後自動刷新畫面
+          } else { 
+            alert("操作失敗: " + result.message); 
+            btn.disabled = false; 
+            btn.textContent = "取消"; 
+          }
+        })
+        .catch(function() { 
+          alert("網路連線失敗"); 
+          btn.disabled = false; 
+          btn.textContent = "取消"; 
+        });
+      });
+    });
   }
   document.getElementById("updatedAt").textContent = timeStr;
 
-  // 渲染已完成訂單明細
   var completedBody = document.getElementById("completedBody");
   completedBody.innerHTML = "";
   if (completedOrders.length === 0) {
@@ -361,7 +389,6 @@ function renderOrders(menu, orders, completedOrders, todayRevenue) {
       var sourceLabel = o.source === "現場" ? "現場" : "LINE";
       var phoneHtml = o.phone ? "<br><span style='font-size:12px;color:#777'>" + o.phone + "</span>" : "";
       
-      // 💡 渲染備註欄
       var remarkHtml = o.remark ? "<span style='color:#D85A30; font-weight:600; font-size:13px;'>" + o.remark + "</span>" : "-";
 
       var tr = document.createElement("tr");
@@ -509,7 +536,7 @@ document.getElementById("counterSubmitBtn").addEventListener("click", function()
 
   var name = document.getElementById("counterCustomerName").value.trim() || "現場客人";
   var phone = document.getElementById("counterCustomerPhone").value.trim() || "";
-  var remark = document.getElementById("counterRemark").value.trim() || ""; // 💡 抓取櫃檯備註
+  var remark = document.getElementById("counterRemark").value.trim() || "";
   document.getElementById("counterSubmitBtn").disabled = true;
 
   fetch(API_URL, {
@@ -520,7 +547,7 @@ document.getElementById("counterSubmitBtn").addEventListener("click", function()
       pickup_time: document.getElementById("counterPickupTime").value,
       customer_name: name,
       phone: phone,
-      remark: remark, // 💡 傳送櫃檯備註
+      remark: remark, 
       source: "現場"
     })
   })
@@ -537,7 +564,7 @@ document.getElementById("counterSubmitBtn").addEventListener("click", function()
       counterCart = {};
       document.getElementById("counterCustomerName").value = "";
       document.getElementById("counterCustomerPhone").value = "";
-      document.getElementById("counterRemark").value = ""; // 💡 清空備註
+      document.getElementById("counterRemark").value = ""; 
       document.getElementById("counterTotalPrice").textContent = "$0"; 
       fetchData(false);
     })
